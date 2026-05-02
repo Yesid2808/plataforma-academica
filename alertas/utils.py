@@ -498,7 +498,6 @@ def evaluar_alertas_academicas(estudiante):
 def evaluar_alertas_por_asistencia(estudiante):
     return {
         'inasistencia': evaluar_alerta_inasistencia(estudiante),
-        'riesgo_integral': evaluar_alerta_riesgo_integral(estudiante),
     }
 
 
