@@ -271,7 +271,17 @@ def registrar_asistencia(request):
                                 estudiante.id,
                             )
 
-                for estudiante in estudiantes_actualizados:
+                estudiantes_unicos = {estudiante.pk: estudiante for estudiante in estudiantes_actualizados}
+                ausencias_por_estudiante = {
+                    item['estudiante']: item['total']
+                    for item in Asistencia.objects.filter(
+                        estudiante_id__in=estudiantes_unicos.keys(),
+                        estado='A',
+                    ).values('estudiante').annotate(total=Count('id'))
+                }
+
+                for estudiante in estudiantes_unicos.values():
+                    estudiante._total_ausencias_cache = ausencias_por_estudiante.get(estudiante.pk, 0)
                     try:
                         evaluar_alertas_academicas(estudiante)
                     except Exception:

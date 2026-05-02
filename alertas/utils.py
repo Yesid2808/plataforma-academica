@@ -42,6 +42,9 @@ def obtener_promedio_academico(estudiante):
 
 
 def obtener_total_ausencias(estudiante):
+    total_cache = getattr(estudiante, '_total_ausencias_cache', None)
+    if total_cache is not None:
+        return total_cache
     return Asistencia.objects.filter(estudiante=estudiante, estado='A').count()
 
 
