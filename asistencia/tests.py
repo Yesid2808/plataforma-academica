@@ -112,7 +112,7 @@ class AsistenciaPermisosTests(TestCase):
             ).exists()
         )
 
-    @patch('asistencia.views.evaluar_alertas_academicas', side_effect=Exception('fallo-alertas'))
+    @patch('asistencia.views.evaluar_alertas_por_asistencia', side_effect=Exception('fallo-alertas'))
     def test_modificar_asistencia_no_falla_si_alertas_lanza_error(self, _mock_alertas):
         Asistencia.objects.create(
             estudiante=self.estudiante,

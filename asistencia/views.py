@@ -15,7 +15,7 @@ from .models import Asistencia
 from .forms import AsistenciaFiltroForm
 from academico.models import CargaAcademica, Estudiante, Grado, Grupo, PeriodoAcademico
 from alertas.models import ConfiguracionAlerta
-from alertas.utils import evaluar_alertas_academicas, comparar_valor
+from alertas.utils import evaluar_alertas_por_asistencia, comparar_valor
 from evaluacion.models import ActividadEvaluativa, Calificacion
 from usuarios.auditoria import registrar_auditoria_cambio
 from usuarios.decorators import role_required
@@ -283,7 +283,7 @@ def registrar_asistencia(request):
                 for estudiante in estudiantes_unicos.values():
                     estudiante._total_ausencias_cache = ausencias_por_estudiante.get(estudiante.pk, 0)
                     try:
-                        evaluar_alertas_academicas(estudiante)
+                        evaluar_alertas_por_asistencia(estudiante)
                     except Exception:
                         logger.exception(
                             'No se pudieron recalcular las alertas del estudiante %s tras actualizar asistencia.',

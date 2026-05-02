@@ -495,6 +495,13 @@ def evaluar_alertas_academicas(estudiante):
     }
 
 
+def evaluar_alertas_por_asistencia(estudiante):
+    return {
+        'inasistencia': evaluar_alerta_inasistencia(estudiante),
+        'riesgo_integral': evaluar_alerta_riesgo_integral(estudiante),
+    }
+
+
 def construir_detalle_alerta(alerta):
     estudiante = alerta.estudiante
     tipo = alerta.tipo_alerta.nombre if alerta.tipo_alerta else ''
