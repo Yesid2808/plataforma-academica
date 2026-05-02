@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -167,3 +168,31 @@ class EvaluacionPermisosTests(TestCase):
 
         self.assertEqual(promedio, Decimal('3.40'))
         self.assertEqual(resumen[ActividadEvaluativa.DIMENSION_PARCIAL]['promedio'], Decimal('3.00'))
+
+    @patch('evaluacion.views.evaluar_alertas_academicas', side_effect=RuntimeError('timeout alertas'))
+    def test_guardar_calificaciones_no_falla_si_alertas_lanza_error(self, _mock_alertas):
+        self.client.force_login(self.docente)
+
+        response = self.client.post(reverse('registrar_calificaciones', args=[self.actividad.id]), {
+            f'nota_{self.estudiante.id}': '4.20',
+            f'observacion_{self.estudiante.id}': 'Registro de prueba',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        calificacion = Calificacion.objects.get(actividad=self.actividad, estudiante=self.estudiante)
+        self.assertEqual(calificacion.nota, Decimal('4.20'))
+        self.assertEqual(calificacion.observacion, 'Registro de prueba')
+
+    @patch('evaluacion.views.crear_notificaciones_docentes', side_effect=RuntimeError('smtp caido'))
+    def test_guardar_calificaciones_no_falla_si_notificaciones_lanzan_error(self, _mock_notificaciones):
+        self.client.force_login(self.docente)
+
+        response = self.client.post(reverse('registrar_calificaciones', args=[self.actividad.id]), {
+            f'nota_{self.estudiante.id}': '3.80',
+            f'observacion_{self.estudiante.id}': 'Sin notificacion',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        calificacion = Calificacion.objects.get(actividad=self.actividad, estudiante=self.estudiante)
+        self.assertEqual(calificacion.nota, Decimal('3.80'))
+        self.assertEqual(calificacion.observacion, 'Sin notificacion')

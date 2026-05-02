@@ -12,6 +12,9 @@ RIESGO_INTEGRAL = 'Riesgo integral academico'
 CAIDA_RENDIMIENTO = 'Caida de rendimiento academico'
 RIESGO_MULTIMATERIA = 'Riesgo por multiples materias'
 
+_CONFIG_INASISTENCIA_READY = False
+_CONFIG_ALERTAS_ACADEMICAS_READY = False
+
 
 def comparar_valor(valor, operador, umbral):
     valor = Decimal(str(valor))
@@ -198,6 +201,10 @@ def _cerrar_alerta_si_existe(estudiante, tipo_alerta, descripcion):
 
 
 def asegurar_configuraciones_inasistencia():
+    global _CONFIG_INASISTENCIA_READY
+    if _CONFIG_INASISTENCIA_READY:
+        return
+
     tipo_alerta, _ = TipoAlerta.objects.get_or_create(
         nombre=INASISTENCIA_ACUMULADA,
         defaults={
@@ -224,9 +231,14 @@ def asegurar_configuraciones_inasistencia():
                 'descripcion': f'Se activa con {operador} {umbral} ausencias.',
             }
         )
+    _CONFIG_INASISTENCIA_READY = True
 
 
 def asegurar_configuraciones_alertas_academicas():
+    global _CONFIG_ALERTAS_ACADEMICAS_READY
+    if _CONFIG_ALERTAS_ACADEMICAS_READY:
+        return
+
     tipo_rendimiento, _ = TipoAlerta.objects.get_or_create(
         nombre=BAJO_RENDIMIENTO,
         defaults={
@@ -302,6 +314,7 @@ def asegurar_configuraciones_alertas_academicas():
             'descripcion': 'Se activa cuando el estudiante tiene dos o mas asignaturas con promedio inferior a 3.0.',
         }
     )
+    _CONFIG_ALERTAS_ACADEMICAS_READY = True
 
 
 def evaluar_alerta_inasistencia(estudiante):

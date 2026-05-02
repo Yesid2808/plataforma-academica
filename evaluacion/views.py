@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
@@ -27,6 +28,8 @@ from usuarios.permissions import (
 from .forms import ActividadEvaluativaForm
 from .models import ActividadEvaluativa, Calificacion
 from .utils import calcular_promedio_dimensionado
+
+logger = logging.getLogger(__name__)
 
 
 def _url_lista_actividades_filtrada(carga_id=None, periodo_id=None):
@@ -409,6 +412,7 @@ def registrar_calificaciones(request, pk):
         valores_enviados = {}
         cambios_realizados = []
         detalle_cambios = []
+        estudiantes_actualizados = []
 
         with transaction.atomic():
             for estudiante in estudiantes:
@@ -427,6 +431,7 @@ def registrar_calificaciones(request, pk):
                         cambios_realizados.append(
                             f'{estudiante.apellidos} {estudiante.nombres}: {calificacion_previa.nota} -> sin nota'
                         )
+                        estudiantes_actualizados.append(estudiante)
                         detalle_cambios.append({
                             'estudiante': f'{estudiante.apellidos} {estudiante.nombres}',
                             'valor_anterior': str(calificacion_previa.nota),
@@ -435,32 +440,38 @@ def registrar_calificaciones(request, pk):
                             'observacion_nueva': '',
                             'actividad': actividad.nombre,
                         })
-                        registrar_auditoria_cambio(
-                            actor=request.user,
-                            tipo='CALIFICACION',
-                            accion='ELIMINACION',
-                            modulo='calificaciones',
-                            titulo=f'Eliminacion de nota en {actividad.carga_academica.asignatura.nombre}',
-                            descripcion=(
-                                f'{request.user.get_full_name() or request.user.username} elimino la nota de '
-                                f'{estudiante.apellidos} {estudiante.nombres} en {actividad.nombre} '
-                                f'({actividad.carga_academica.grupo}).'
-                            ),
-                            estudiante=estudiante,
-                            grupo=str(actividad.carga_academica.grupo),
-                            asignatura=actividad.carga_academica.asignatura.nombre,
-                            fecha_referencia=actividad.fecha,
-                            valor_anterior=calificacion_previa.nota,
-                            valor_nuevo='Sin nota',
-                            referencia_url=f'/evaluacion/actividad/{actividad.pk}/calificaciones/',
-                            datos_extra={
-                                'actividad': actividad.nombre,
-                                'observacion_anterior': calificacion_previa.observacion or '',
-                                'observacion_nueva': '',
-                            },
-                        )
+                        try:
+                            registrar_auditoria_cambio(
+                                actor=request.user,
+                                tipo='CALIFICACION',
+                                accion='ELIMINACION',
+                                modulo='calificaciones',
+                                titulo=f'Eliminacion de nota en {actividad.carga_academica.asignatura.nombre}',
+                                descripcion=(
+                                    f'{request.user.get_full_name() or request.user.username} elimino la nota de '
+                                    f'{estudiante.apellidos} {estudiante.nombres} en {actividad.nombre} '
+                                    f'({actividad.carga_academica.grupo}).'
+                                ),
+                                estudiante=estudiante,
+                                grupo=str(actividad.carga_academica.grupo),
+                                asignatura=actividad.carga_academica.asignatura.nombre,
+                                fecha_referencia=actividad.fecha,
+                                valor_anterior=calificacion_previa.nota,
+                                valor_nuevo='Sin nota',
+                                referencia_url=f'/evaluacion/actividad/{actividad.pk}/calificaciones/',
+                                datos_extra={
+                                    'actividad': actividad.nombre,
+                                    'observacion_anterior': calificacion_previa.observacion or '',
+                                    'observacion_nueva': '',
+                                },
+                            )
+                        except Exception:
+                            logger.exception(
+                                'No se pudo registrar auditoria de eliminacion de calificacion para actividad=%s estudiante=%s',
+                                actividad.pk,
+                                estudiante.pk,
+                            )
                     Calificacion.objects.filter(actividad=actividad, estudiante=estudiante).delete()
-                    evaluar_alertas_academicas(estudiante)
                     continue
 
                 try:
@@ -504,57 +515,79 @@ def registrar_calificaciones(request, pk):
                     calificacion_previa.nota != nota or
                     (calificacion_previa.observacion or '') != observacion
                 ):
-                    registrar_auditoria_cambio(
-                        actor=request.user,
-                        tipo='CALIFICACION',
-                        accion=accion,
-                        modulo='calificaciones',
-                        titulo=f'Actualizacion de nota en {actividad.carga_academica.asignatura.nombre}',
-                        descripcion=(
-                            f'{request.user.get_full_name() or request.user.username} actualizo la calificacion de '
-                            f'{estudiante.apellidos} {estudiante.nombres} en {actividad.nombre} '
-                            f'({actividad.carga_academica.grupo}).'
-                        ),
-                        estudiante=estudiante,
-                        grupo=str(actividad.carga_academica.grupo),
-                        asignatura=actividad.carga_academica.asignatura.nombre,
-                        fecha_referencia=actividad.fecha,
-                        valor_anterior=calificacion_previa.nota if calificacion_previa else 'Sin nota',
-                        valor_nuevo=nota,
-                        referencia_url=f'/evaluacion/actividad/{actividad.pk}/calificaciones/',
-                        datos_extra={
-                            'actividad': actividad.nombre,
-                            'observacion_anterior': (calificacion_previa.observacion or '') if calificacion_previa else '',
-                            'observacion_nueva': observacion,
-                            'porcentaje': str(actividad.porcentaje),
-                        },
-                    )
-                evaluar_alertas_academicas(estudiante)
+                    estudiantes_actualizados.append(estudiante)
+                    try:
+                        registrar_auditoria_cambio(
+                            actor=request.user,
+                            tipo='CALIFICACION',
+                            accion=accion,
+                            modulo='calificaciones',
+                            titulo=f'Actualizacion de nota en {actividad.carga_academica.asignatura.nombre}',
+                            descripcion=(
+                                f'{request.user.get_full_name() or request.user.username} actualizo la calificacion de '
+                                f'{estudiante.apellidos} {estudiante.nombres} en {actividad.nombre} '
+                                f'({actividad.carga_academica.grupo}).'
+                            ),
+                            estudiante=estudiante,
+                            grupo=str(actividad.carga_academica.grupo),
+                            asignatura=actividad.carga_academica.asignatura.nombre,
+                            fecha_referencia=actividad.fecha,
+                            valor_anterior=calificacion_previa.nota if calificacion_previa else 'Sin nota',
+                            valor_nuevo=nota,
+                            referencia_url=f'/evaluacion/actividad/{actividad.pk}/calificaciones/',
+                            datos_extra={
+                                'actividad': actividad.nombre,
+                                'observacion_anterior': (calificacion_previa.observacion or '') if calificacion_previa else '',
+                                'observacion_nueva': observacion,
+                                'porcentaje': str(actividad.porcentaje),
+                            },
+                        )
+                    except Exception:
+                        logger.exception(
+                            'No se pudo registrar auditoria de calificacion para actividad=%s estudiante=%s',
+                            actividad.pk,
+                            estudiante.pk,
+                        )
 
             if errores:
                 transaction.set_rollback(True)
             else:
+                for estudiante in {item.pk: item for item in estudiantes_actualizados}.values():
+                    try:
+                        evaluar_alertas_academicas(estudiante)
+                    except Exception:
+                        logger.exception(
+                            'No se pudieron evaluar alertas academicas para estudiante=%s tras actualizar actividad=%s',
+                            estudiante.pk,
+                            actividad.pk,
+                        )
                 if cambios_realizados:
                     resumen = '; '.join(cambios_realizados[:4])
                     if len(cambios_realizados) > 4:
                         resumen += f'; y {len(cambios_realizados) - 4} cambio(s) mas'
-                    crear_notificaciones_docentes(
-                        request.user,
-                        'CALIFICACION',
-                        f'Modificacion de notas en {actividad.carga_academica.asignatura.nombre} - {actividad.carga_academica.grupo}',
-                        (
-                            f'Se modificaron {len(cambios_realizados)} calificaciones en "{actividad.nombre}" '
-                            f'por {request.user.get_full_name() or request.user.username}. {resumen}.'
-                        ),
-                        url=f'/evaluacion/actividad/{actividad.pk}/calificaciones/',
-                        detalle_cambios=detalle_cambios,
-                        metadata={
-                            'asignatura': actividad.carga_academica.asignatura.nombre,
-                            'grupo': str(actividad.carga_academica.grupo),
-                            'fecha': str(actividad.fecha),
-                            'actividad': actividad.nombre,
-                        },
-                    )
+                    try:
+                        crear_notificaciones_docentes(
+                            request.user,
+                            'CALIFICACION',
+                            f'Modificacion de notas en {actividad.carga_academica.asignatura.nombre} - {actividad.carga_academica.grupo}',
+                            (
+                                f'Se modificaron {len(cambios_realizados)} calificaciones en "{actividad.nombre}" '
+                                f'por {request.user.get_full_name() or request.user.username}. {resumen}.'
+                            ),
+                            url=f'/evaluacion/actividad/{actividad.pk}/calificaciones/',
+                            detalle_cambios=detalle_cambios,
+                            metadata={
+                                'asignatura': actividad.carga_academica.asignatura.nombre,
+                                'grupo': str(actividad.carga_academica.grupo),
+                                'fecha': str(actividad.fecha),
+                                'actividad': actividad.nombre,
+                            },
+                        )
+                    except Exception:
+                        logger.exception(
+                            'No se pudieron crear notificaciones docentes para actividad=%s',
+                            actividad.pk,
+                        )
                 messages.success(request, 'Calificaciones guardadas correctamente.')
                 return redirect('registrar_calificaciones', pk=actividad.pk)
 
