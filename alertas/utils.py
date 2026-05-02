@@ -205,7 +205,7 @@ def _cerrar_alerta_si_existe(estudiante, tipo_alerta, descripcion):
 
 def asegurar_configuraciones_inasistencia():
     global _CONFIG_INASISTENCIA_READY
-    if _CONFIG_INASISTENCIA_READY:
+    if _CONFIG_INASISTENCIA_READY and TipoAlerta.objects.filter(nombre=INASISTENCIA_ACUMULADA).exists():
         return
 
     tipo_alerta, _ = TipoAlerta.objects.get_or_create(
@@ -239,7 +239,7 @@ def asegurar_configuraciones_inasistencia():
 
 def asegurar_configuraciones_alertas_academicas():
     global _CONFIG_ALERTAS_ACADEMICAS_READY
-    if _CONFIG_ALERTAS_ACADEMICAS_READY:
+    if _CONFIG_ALERTAS_ACADEMICAS_READY and TipoAlerta.objects.filter(nombre=BAJO_RENDIMIENTO).exists():
         return
 
     tipo_rendimiento, _ = TipoAlerta.objects.get_or_create(

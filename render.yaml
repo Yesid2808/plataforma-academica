@@ -6,3 +6,6 @@ services:
     buildCommand: ./build.sh
     startCommand: gunicorn config.wsgi:application
     autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
