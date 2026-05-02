@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -19,6 +21,9 @@ from usuarios.auditoria import registrar_auditoria_cambio
 from usuarios.decorators import role_required
 from usuarios.notificaciones import crear_notificaciones_docentes
 from usuarios.permissions import cargas_visibles_para, filtrar_estudiantes_visibles, puede_gestionar_docencia, no_es_estudiante
+
+
+logger = logging.getLogger(__name__)
 
 
 def _preparar_hoja_excel(hoja, titulo, encabezados):
@@ -204,6 +209,7 @@ def registrar_asistencia(request):
                 }
                 cambios_realizados = []
                 detalle_cambios = []
+                estudiantes_actualizados = []
 
                 for estudiante in estudiantes:
                     estado = request.POST.get(f'estado_{estudiante.id}', 'P')
@@ -234,31 +240,45 @@ def registrar_asistencia(request):
                     )
 
                     if previo is None or previo[0] != estado or previo[1] != observacion:
-                        registrar_auditoria_cambio(
-                            actor=request.user,
-                            tipo='ASISTENCIA',
-                            accion=accion,
-                            modulo='asistencia',
-                            titulo=f'Actualizacion de asistencia en {carga.asignatura.nombre}',
-                            descripcion=(
-                                f'{request.user.get_full_name() or request.user.username} '
-                                f'registro asistencia para {estudiante.apellidos} {estudiante.nombres} '
-                                f'el {fecha} en {carga.asignatura.nombre} ({carga.grupo}).'
-                            ),
-                            estudiante=estudiante,
-                            grupo=str(carga.grupo),
-                            asignatura=carga.asignatura.nombre,
-                            fecha_referencia=fecha,
-                            valor_anterior=previo[0] if previo else 'Sin registro',
-                            valor_nuevo=estado,
-                            referencia_url=f'/asistencia/registrar/?carga={carga.id}',
-                            datos_extra={
-                                'observacion_anterior': previo[1] if previo else '',
-                                'observacion_nueva': observacion,
-                            },
-                        )
+                        estudiantes_actualizados.append(estudiante)
+                        try:
+                            registrar_auditoria_cambio(
+                                actor=request.user,
+                                tipo='ASISTENCIA',
+                                accion=accion,
+                                modulo='asistencia',
+                                titulo=f'Actualizacion de asistencia en {carga.asignatura.nombre}',
+                                descripcion=(
+                                    f'{request.user.get_full_name() or request.user.username} '
+                                    f'registro asistencia para {estudiante.apellidos} {estudiante.nombres} '
+                                    f'el {fecha} en {carga.asignatura.nombre} ({carga.grupo}).'
+                                ),
+                                estudiante=estudiante,
+                                grupo=str(carga.grupo),
+                                asignatura=carga.asignatura.nombre,
+                                fecha_referencia=fecha,
+                                valor_anterior=previo[0] if previo else 'Sin registro',
+                                valor_nuevo=estado,
+                                referencia_url=f'/asistencia/registrar/?carga={carga.id}',
+                                datos_extra={
+                                    'observacion_anterior': previo[1] if previo else '',
+                                    'observacion_nueva': observacion,
+                                },
+                            )
+                        except Exception:
+                            logger.exception(
+                                'No se pudo registrar la auditoria de asistencia para el estudiante %s.',
+                                estudiante.id,
+                            )
 
-                    evaluar_alertas_academicas(estudiante)
+                for estudiante in estudiantes_actualizados:
+                    try:
+                        evaluar_alertas_academicas(estudiante)
+                    except Exception:
+                        logger.exception(
+                            'No se pudieron recalcular las alertas del estudiante %s tras actualizar asistencia.',
+                            estudiante.id,
+                        )
 
                 if 'guardar' in request.POST and not asistencia_existente:
                     messages.success(request, 'Asistencia registrada correctamente para hoy.')
@@ -268,22 +288,28 @@ def registrar_asistencia(request):
                         resumen = '; '.join(cambios_realizados[:4])
                         if len(cambios_realizados) > 4:
                             resumen += f'; y {len(cambios_realizados) - 4} cambio(s) mas'
-                        crear_notificaciones_docentes(
-                            request.user,
-                            'ASISTENCIA',
-                            f'Modificacion de asistencia en {carga.asignatura.nombre} - {carga.grupo}',
-                            (
-                                f'Se modificaron {len(cambios_realizados)} registros del {fecha} '
-                                f'por {request.user.get_full_name() or request.user.username}. {resumen}.'
-                            ),
-                            url=f'/asistencia/registrar/?carga={carga.id}',
-                            detalle_cambios=detalle_cambios,
-                            metadata={
-                                'asignatura': carga.asignatura.nombre,
-                                'grupo': str(carga.grupo),
-                                'fecha': str(fecha),
-                            },
-                        )
+                        try:
+                            crear_notificaciones_docentes(
+                                request.user,
+                                'ASISTENCIA',
+                                f'Modificacion de asistencia en {carga.asignatura.nombre} - {carga.grupo}',
+                                (
+                                    f'Se modificaron {len(cambios_realizados)} registros del {fecha} '
+                                    f'por {request.user.get_full_name() or request.user.username}. {resumen}.'
+                                ),
+                                url=f'/asistencia/registrar/?carga={carga.id}',
+                                detalle_cambios=detalle_cambios,
+                                metadata={
+                                    'asignatura': carga.asignatura.nombre,
+                                    'grupo': str(carga.grupo),
+                                    'fecha': str(fecha),
+                                },
+                            )
+                        except Exception:
+                            logger.exception(
+                                'No se pudieron crear notificaciones de asistencia para la carga %s.',
+                                carga.id,
+                            )
 
                 return redirect(f'/asistencia/registrar/?carga={carga.id}')
 

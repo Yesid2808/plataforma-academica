@@ -1,4 +1,5 @@
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -108,5 +109,33 @@ class AsistenciaPermisosTests(TestCase):
             NotificacionUsuario.objects.filter(
                 usuario=self.docente,
                 tipo='ASISTENCIA',
+            ).exists()
+        )
+
+    @patch('asistencia.views.evaluar_alertas_academicas', side_effect=Exception('fallo-alertas'))
+    def test_modificar_asistencia_no_falla_si_alertas_lanza_error(self, _mock_alertas):
+        Asistencia.objects.create(
+            estudiante=self.estudiante,
+            carga_academica=self.carga,
+            fecha=date.today(),
+            estado='P',
+        )
+        self.client.force_login(self.docente)
+
+        response = self.client.post(reverse('registrar_asistencia'), {
+            'modificar': '1',
+            'carga_academica': self.carga.id,
+            f'estado_{self.estudiante.id}': 'A',
+            f'observacion_{self.estudiante.id}': 'Cambio resiliente',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.estudiante.refresh_from_db()
+        self.assertTrue(
+            Asistencia.objects.filter(
+                estudiante=self.estudiante,
+                carga_academica=self.carga,
+                fecha=date.today(),
+                estado='A',
             ).exists()
         )
