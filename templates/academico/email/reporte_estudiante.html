@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte {{ periodo_label|lower }}</title>
+</head>
+<body style="margin:0; padding:0; background:#f3f4f6; font-family:Arial, sans-serif; color:#1f2937;">
+    <div style="max-width:760px; margin:0 auto; padding:20px;">
+        <div style="background:#ffffff; border-radius:18px; overflow:hidden; box-shadow:0 12px 30px rgba(15, 23, 42, 0.08);">
+            <div style="background:linear-gradient(135deg, #0f172a, #1d4ed8); padding:24px 28px; color:#ffffff;">
+                <h1 style="margin:0; font-size:24px; line-height:1.15;">Reporte {{ periodo_label|lower }} del estudiante</h1>
+                <p style="margin:8px 0 0; font-size:14px; opacity:0.9;">{{ estudiante.nombres }} {{ estudiante.apellidos }} | {{ estudiante.grupo }} | {{ fecha_inicio|date:"Y-m-d" }} a {{ fecha_fin|date:"Y-m-d" }}</p>
+            </div>
+
+            <div style="padding:26px 28px;">
+                <p style="margin:0 0 10px;">Hola {{ destinatario_nombre }},</p>
+                <p style="margin:0 0 18px; color:#475569; line-height:1.55;">Adjuntamos el seguimiento academico del periodo consultado. A continuacion se resume el comportamiento general del estudiante y, mas abajo, el detalle diario por materia con asistencia y notas registradas.</p>
+
+                <table role="presentation" style="width:100%; border-collapse:separate; border-spacing:10px 10px; margin:0 0 18px;">
+                    <tr>
+                        <td style="width:50%; background:#eff6ff; border:1px solid #bfdbfe; border-radius:14px; padding:12px 14px; vertical-align:top;">
+                            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Asistencia</div>
+                            <div style="font-size:24px; font-weight:800; color:#0f172a; line-height:1.1; margin-top:4px;">{{ resumen.porcentaje_asistencia }}%</div>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">{{ resumen.total_registros }} registros</div>
+                        </td>
+                        <td style="width:50%; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:14px; padding:12px 14px; vertical-align:top;">
+                            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Promedio</div>
+                            <div style="font-size:24px; font-weight:800; color:#0f172a; line-height:1.1; margin-top:4px;">{{ resumen.promedio_simple }}</div>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">{{ resumen.total_calificaciones }} calificaciones</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width:50%; background:#fff7ed; border:1px solid #fed7aa; border-radius:14px; padding:12px 14px; vertical-align:top;">
+                            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Notas bajas</div>
+                            <div style="font-size:24px; font-weight:800; color:#c2410c; line-height:1.1; margin-top:4px;">{{ resumen.notas_bajas }}</div>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">Menores a 3.0</div>
+                        </td>
+                        <td style="width:50%; background:#fef2f2; border:1px solid #fecaca; border-radius:14px; padding:12px 14px; vertical-align:top;">
+                            <div style="font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">Alertas</div>
+                            <div style="font-size:24px; font-weight:800; color:#991b1b; line-height:1.1; margin-top:4px;">{{ resumen.alertas_periodo }}</div>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">{{ resumen.alertas_activas }} activas</div>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="margin:0 0 12px;">
+                    <h2 style="margin:0; font-size:18px; color:#0f172a;">Detalle diario por materia</h2>
+                    <p style="margin:6px 0 0; font-size:13px; color:#64748b;">Cada fecha resume la asistencia tomada y las actividades calificadas registradas para cada asignatura.</p>
+                </div>
+
+                {% if seguimiento_destacado %}
+                    {% for dia in seguimiento_destacado %}
+                    <div style="margin-top:16px; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+                        <div style="background:#f8fafc; padding:12px 14px; border-bottom:1px solid #e2e8f0;">
+                            <table role="presentation" style="width:100%; border-collapse:collapse;">
+                                <tr>
+                            <td style="font-size:15px; font-weight:700; color:#0f172a;">{{ dia.fecha|date:"Y-m-d" }}</td>
+                                    <td style="text-align:right; font-size:12px; color:#64748b;">{{ dia.total_materias }} materias | {{ dia.materias_con_nota }} con nota | {{ dia.materias_con_asistencia }} con asistencia</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <table role="presentation" style="width:100%; border-collapse:collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left; padding:10px 12px; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #e5e7eb;">Materia</th>
+                                    <th style="text-align:left; padding:10px 12px; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #e5e7eb;">Asistencia</th>
+                                    <th style="text-align:left; padding:10px 12px; font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid #e5e7eb;">Actividad y nota</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if dia.materias %}
+                                {% for materia in dia.materias %}
+                                <tr>
+                                    <td style="padding:12px; vertical-align:top; border-bottom:1px solid #f1f5f9;">
+                                        <div style="font-size:13px; font-weight:700; color:#111827;">{{ materia.asignatura }}</div>
+                                    </td>
+                                    <td style="padding:12px; vertical-align:top; border-bottom:1px solid #f1f5f9;">
+                                        {% if materia.asistencia %}
+                                            <div style="display:inline-block; padding:4px 8px; border-radius:999px; background:#eff6ff; color:#1d4ed8; font-size:12px; font-weight:700;">{{ materia.asistencia.get_estado_display }}</div>
+                                            {% if materia.asistencia.observacion %}
+                                                <div style="font-size:12px; color:#64748b; margin-top:6px;">{{ materia.asistencia.observacion }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <div style="font-size:12px; color:#64748b;">Sin registro</div>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding:12px; vertical-align:top; border-bottom:1px solid #f1f5f9;">
+                                        {% if materia.calificaciones %}
+                                            {% for calificacion in materia.calificaciones %}
+                                            <div {% if not forloop.first %}style="margin-top:8px; padding-top:8px; border-top:1px dashed #e2e8f0;"{% endif %}>
+                                                <div style="font-size:13px; color:#111827;"><strong>{{ calificacion.actividad.nombre }}</strong></div>
+                                                <div style="font-size:12px; color:#64748b; margin-top:2px;">{{ calificacion.actividad.periodo }} | Peso {{ calificacion.actividad.porcentaje }}% | Nota <strong style="{% if calificacion.nota < 3 %}color:#b91c1c;{% else %}color:#0f172a;{% endif %}">{{ calificacion.nota }}</strong></div>
+                                                {% if calificacion.observacion %}
+                                                    <div style="font-size:12px; color:#64748b; margin-top:3px;">{{ calificacion.observacion }}</div>
+                                                {% endif %}
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div style="font-size:12px; color:#64748b;">No se registraron notas en esta fecha.</div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" style="padding:14px 12px; font-size:12px; color:#64748b;">
+                                        No se registraron asistencias ni calificaciones para este dia habil.
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="margin-top:16px; border:1px dashed #cbd5e1; border-radius:16px; padding:16px; background:#f8fafc; color:#475569;">
+                        No se registraron asistencias ni calificaciones en el periodo consultado.
+                    </div>
+                {% endif %}
+
+                <div style="margin-top:20px; padding:14px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px;">
+                    <div style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:4px;">Archivo adjunto</div>
+                    <div style="font-size:13px; color:#64748b; line-height:1.5;">Tambien se adjunta el Excel con el consolidado completo de horario, asistencias, calificaciones, alertas y seguimiento diario.</div>
+                </div>
+
+                <p style="margin:20px 0 0; font-size:12px; color:#64748b;">Este mensaje fue generado automaticamente por la Plataforma Academica.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

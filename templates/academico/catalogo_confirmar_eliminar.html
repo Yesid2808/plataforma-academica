@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h2 class="fw-bold mb-3">{{ titulo }}</h2>
+            <p>Vas a eliminar el registro <strong>{{ objeto }}</strong>.</p>
+            <p class="text-danger">Si este registro tiene dependencias, la base de datos puede impedir la eliminación.</p>
+
+            <form method="post" class="d-flex gap-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                <a href="{% url 'lista_catalogo' catalogo %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

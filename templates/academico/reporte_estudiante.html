@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte del estudiante{% endblock %}
+{% block page_title %}{% if user.rol == 'EST' %}Mi seguimiento academico{% else %}Reporte del estudiante{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h2 class="fw-bold mb-1">{% if user.rol == 'EST' %}Mi reporte {{ periodo_label|lower }}{% else %}Reporte {{ periodo_label|lower }} del estudiante{% endif %}</h2>
+                <p class="text-muted mb-0">
+                    {{ estudiante.apellidos }} {{ estudiante.nombres }} - {{ estudiante.grupo }}
+                    | {{ fecha_inicio }} a {{ fecha_fin }}
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% if user.rol == 'EST' %}{% url 'mi_perfil_estudiante' %}{% else %}{% url 'gestion_seguimiento' %}{% endif %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Volver
+                </a>
+                <a href="{% url 'reporte_estudiante' estudiante.id %}?periodo=semanal{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}{% endif %}" class="btn {% if periodo == 'semanal' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+                    Semanal
+                </a>
+                <a href="{% url 'reporte_estudiante' estudiante.id %}?periodo=mensual" class="btn {% if periodo == 'mensual' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+                    Mensual
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if periodo == 'semanal' %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <input type="hidden" name="periodo" value="semanal">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Semana desde</label>
+                    <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Semana hasta</label>
+                    <input type="date" name="fecha_fin" class="form-control" value="{{ fecha_fin|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-dark">Actualizar semana</button>
+                        <a href="{% url 'reporte_estudiante' estudiante.id %}?periodo=semanal" class="btn btn-outline-secondary">Semana actual</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">Acciones del reporte</h5>
+                <p class="text-muted mb-0">{% if user.rol == 'EST' %}Descarga tu consolidado academico del periodo consultado.{% else %}Descarga el consolidado o envialo por correo al acudiente.{% endif %}</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'descargar_reporte_estudiante' estudiante.id periodo %}?{% if fecha_inicio %}fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}{% endif %}{% if fecha_inicio and fecha_fin %}&{% endif %}{% if fecha_fin %}fecha_fin={{ fecha_fin|date:'Y-m-d' }}{% endif %}" class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
+                </a>
+                {% if user.rol != 'EST' %}
+                <a href="{% url 'enviar_reporte_estudiante' estudiante.id periodo %}?{% if fecha_inicio %}fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}{% endif %}{% if fecha_inicio and fecha_fin %}&{% endif %}{% if fecha_fin %}fecha_fin={{ fecha_fin|date:'Y-m-d' }}{% endif %}" class="btn btn-primary">
+                    <i class="bi bi-envelope-fill me-1"></i> Enviar al acudiente
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="report-hero-card">
+                        <small>Estudiante</small>
+                        <strong>{{ estudiante.apellidos }} {{ estudiante.nombres }}</strong>
+                        <span>{{ estudiante.grupo }}</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="report-hero-card">
+                        <small>Periodo consultado</small>
+                        <strong>{{ periodo_label }}</strong>
+                        <span>{{ fecha_inicio }} a {{ fecha_fin }}</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="report-hero-card">
+                        <small>Acudiente</small>
+                        <strong>{{ estudiante.acudiente }}</strong>
+                        <span>{{ estudiante.correo_acudiente|default:"Sin correo registrado" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-2 g-xl-3 mb-3 report-kpi-row">
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 report-kpi-card report-kpi-card-attendance">
+                <div class="card-body">
+                    <span class="report-kpi-label">Asistencia</span>
+                    <h2 class="report-kpi-value">{{ resumen.porcentaje_asistencia }}%</h2>
+                    <small class="report-kpi-meta">{{ resumen.total_registros }} registros</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 report-kpi-card report-kpi-card-grades">
+                <div class="card-body">
+                    <span class="report-kpi-label">Promedio</span>
+                    <h2 class="report-kpi-value">{{ resumen.promedio_simple }}</h2>
+                    <small class="report-kpi-meta">{{ resumen.total_calificaciones }} calificaciones</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 report-kpi-card report-kpi-card-low">
+                <div class="card-body">
+                    <span class="report-kpi-label">Notas bajas</span>
+                    <h2 class="report-kpi-value">{{ resumen.notas_bajas }}</h2>
+                    <small class="report-kpi-meta">Menores a 3.0</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 report-kpi-card report-kpi-card-alerts">
+                <div class="card-body">
+                    <span class="report-kpi-label">Alertas</span>
+                    <h2 class="report-kpi-value">{{ resumen.alertas_periodo }}</h2>
+                    <small class="report-kpi-meta">{{ resumen.alertas_activas }} activas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1">Horario academico del grupo</h5>
+                </div>
+                <div class="pagination-compact-summary">
+                    <span>Dias con clase</span>
+                    <strong>{{ horario_por_dia|length }}</strong>
+                </div>
+            </div>
+
+            {% if horario_por_dia %}
+            <div class="report-schedule-grid">
+                {% for dia in horario_por_dia %}
+                <div class="report-schedule-day">
+                    <div class="report-schedule-day-head">
+                        <span>{{ dia.dia }}</span>
+                        <small>{{ dia.bloques|length }} bloques</small>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle custom-table report-schedule-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Materia</th>
+                                    <th class="text-center">Aula</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bloque in dia.bloques %}
+                                <tr>
+                                    <td class="report-schedule-time-cell">
+                                        {{ bloque.hora_inicio|time:"H:i" }} - {{ bloque.hora_fin|time:"H:i" }}
+                                    </td>
+                                    <td class="report-schedule-subject-cell">
+                                        <strong>{{ bloque.asignatura }}</strong>
+                                        <span>{{ bloque.docente }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="report-schedule-room">{{ bloque.aula }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">No hay horario registrado para este grupo.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Detalle de asistencias</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table report-detail-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Asignatura</th>
+                                    <th class="text-center">Estado</th>
+                                    <th>Observacion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for asistencia in asistencias %}
+                                {% ifchanged asistencia.fecha %}
+                                <tr class="report-day-divider-row">
+                                    <td colspan="4">
+                                        <span class="report-day-divider">{{ asistencia.fecha|date:"Y-m-d" }}</span>
+                                    </td>
+                                </tr>
+                                {% endifchanged %}
+                                <tr>
+                                    <td>{{ asistencia.fecha|date:"Y-m-d" }}</td>
+                                    <td>{{ asistencia.carga_academica.asignatura.nombre }}</td>
+                                    <td class="text-center">
+                                        <span class="report-status-badge report-status-{{ asistencia.estado|lower }}">{{ asistencia.get_estado_display }}</span>
+                                    </td>
+                                    <td>{{ asistencia.observacion|default:"-" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">No hay asistencias en este periodo.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Detalle de calificaciones</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table report-detail-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Asignatura</th>
+                                    <th>Actividad</th>
+                                    <th class="text-center">Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for calificacion in calificaciones %}
+                                {% ifchanged calificacion.actividad.fecha %}
+                                <tr class="report-day-divider-row">
+                                    <td colspan="4">
+                                        <span class="report-day-divider">{{ calificacion.actividad.fecha|date:"Y-m-d" }}</span>
+                                    </td>
+                                </tr>
+                                {% endifchanged %}
+                                <tr>
+                                    <td>{{ calificacion.actividad.fecha|date:"Y-m-d" }}</td>
+                                    <td>{{ calificacion.actividad.carga_academica.asignatura.nombre }}</td>
+                                    <td>{{ calificacion.actividad.nombre }}</td>
+                                    <td class="text-center">{{ calificacion.nota }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">No hay calificaciones en este periodo.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Alertas del periodo</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th class="text-center">Nivel</th>
+                                    <th class="text-center">Estado</th>
+                                    <th>Descripcion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alerta in alertas %}
+                                <tr>
+                                    <td>{{ alerta.fecha_generacion|date:"Y-m-d H:i" }}</td>
+                                    <td>{{ alerta.tipo_alerta.nombre|default:"Sin tipo" }}</td>
+                                    <td class="text-center"><span class="report-status-badge">{{ alerta.nivel }}</span></td>
+                                    <td class="text-center"><span class="report-status-badge">{{ alerta.get_estado_display }}</span></td>
+                                    <td>{{ alerta.descripcion }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">No hay alertas en este periodo.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

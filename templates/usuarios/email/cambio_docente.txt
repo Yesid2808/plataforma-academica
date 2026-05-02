@@ -1,0 +1,26 @@
+{{ site_name }}
+Notificacion de seguridad academica
+
+Hola {{ receptor.get_full_name|default:receptor.username }},
+
+Se registro una modificacion en el modulo de {{ tipo|lower }}.
+
+Titulo: {{ titulo }}
+Realizada por: {{ actor_nombre }}
+Resumen: {{ mensaje }}
+
+{% if metadata.asignatura %}Asignatura: {{ metadata.asignatura }}
+{% endif %}{% if metadata.grupo %}Grupo: {{ metadata.grupo }}
+{% endif %}{% if metadata.fecha %}Fecha de referencia: {{ metadata.fecha }}
+{% endif %}{% if metadata.actividad %}Actividad: {{ metadata.actividad }}
+{% endif %}
+Detalle de cambios:
+{% for item in detalle_cambios %}
+- {{ item.estudiante }} | {{ item.valor_anterior }} -> {{ item.valor_nuevo }}{% if item.actividad %} | {{ item.actividad }}{% endif %}{% if item.observacion_anterior or item.observacion_nueva %} | Obs.: "{{ item.observacion_anterior|default:'-' }}" -> "{{ item.observacion_nueva|default:'-' }}"{% endif %}
+{% empty %}
+- Sin detalle adicional.
+{% endfor %}
+
+{% if url %}Ruta interna: {{ url }}
+{% endif %}
+Este mensaje se envio por seguridad y trazabilidad academica.

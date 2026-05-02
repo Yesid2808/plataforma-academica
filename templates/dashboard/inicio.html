@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}{% if es_estudiante_dashboard %}Mi panel academico{% else %}Dashboard ejecutivo{% endif %}{% endblock %}
+{% block header_subtitle %}
+<p class="app-header-subtitle">
+    {% if es_estudiante_dashboard %}
+    Consulta tu asistencia, tus notas, alertas y horario desde un solo lugar.
+    {% else %}
+    Vista central con asistencia, rendimiento, alertas y agenda academica para tomar decisiones mas rapido.
+    {% endif %}
+</p>
+{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions">
+    {% if not es_docente_dashboard and not es_estudiante_dashboard %}
+    <a href="{% url 'exportar_estudiantes_riesgo_excel' %}" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel me-1"></i> Exportar riesgo
+    </a>
+    {% endif %}
+    <a href="{% url 'horarios_academicos' %}" class="btn btn-outline-primary">
+        <i class="bi bi-calendar3-week me-1"></i> {% if es_estudiante_dashboard %}Mi horario{% else %}Ver horario{% endif %}
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="dashboard-kpi-card dashboard-kpi-primary">
+                <div class="dashboard-kpi-icon">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div>
+                    <small>{% if es_estudiante_dashboard %}Mi grupo{% elif es_docente_dashboard %}Estudiantes a cargo{% else %}Estudiantes activos{% endif %}</small>
+                    <strong>{{ total_estudiantes }}</strong>
+                    <span>{% if es_estudiante_dashboard %}{{ estudiante_actual.grupo|default:"Sin grupo asignado" }}{% else %}{{ total_grupos }} grupos visibles{% endif %}</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="dashboard-kpi-card dashboard-kpi-success">
+                <div class="dashboard-kpi-icon">
+                    <i class="bi bi-calendar-check-fill"></i>
+                </div>
+                <div>
+                    <small>{% if es_estudiante_dashboard %}Mi asistencia{% else %}Asistencia general{% endif %}</small>
+                    <strong>{{ porcentaje_asistencia }}%</strong>
+                    <span>{{ total_asistencias }} registros acumulados</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="dashboard-kpi-card dashboard-kpi-warning">
+                <div class="dashboard-kpi-icon">
+                    <i class="bi bi-journal-check"></i>
+                </div>
+                <div>
+                    <small>{% if es_estudiante_dashboard %}Mi promedio academico{% else %}Promedio academico{% endif %}</small>
+                    <strong>{{ promedio_general }}</strong>
+                    <span>{{ total_calificaciones }} calificaciones</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="dashboard-kpi-card dashboard-kpi-danger">
+                <div class="dashboard-kpi-icon">
+                    <i class="bi bi-exclamation-diamond-fill"></i>
+                </div>
+                <div>
+                    <small>Alertas activas</small>
+                    <strong>{{ total_alertas_activas }}</strong>
+                    <span>{{ total_alertas_criticas }} criticas</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not es_estudiante_dashboard %}
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm dashboard-powerbi-card">
+                <div class="card-body dashboard-powerbi-card-body">
+                    {% if powerbi_dashboard_url %}
+                    <div class="dashboard-powerbi-toolbar">
+                        <div class="dashboard-powerbi-title-wrap">
+                            <h5 class="fw-bold mb-1">Tablero analitico institucional</h5>
+                            <p class="text-muted mb-0">Visualiza el reporte interactivo de Power BI directamente desde el panel principal.</p>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="header-detail-chip"><strong>Fuente:</strong> Power BI</span>
+                            <a href="{{ powerbi_dashboard_url }}" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Abrir aparte
+                            </a>
+                        </div>
+                    </div>
+                    <div class="dashboard-powerbi-embed dashboard-powerbi-embed-full">
+                        <iframe
+                            title="Tablero Power BI"
+                            src="{{ powerbi_dashboard_embed_url }}"
+                            allowfullscreen="true"
+                            loading="lazy"
+                            style="width:100%;height:100%;min-height:inherit;display:block;border:0;"
+                        ></iframe>
+                    </div>
+                    {% else %}
+                    <div class="dashboard-powerbi-placeholder">
+                        <div class="dashboard-action-icon">
+                            <i class="bi bi-bar-chart-line-fill"></i>
+                        </div>
+                        <h6>Tablero externo pendiente</h6>
+                        <p>Cuando definas <strong>POWERBI_DASHBOARD_URL</strong>, este bloque mostrara el reporte embebido sin tocar el resto del dashboard.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">Distribucion de asistencia</h5>
+                            <p class="text-muted mb-0 small">Participacion consolidada por estado.</p>
+                        </div>
+                    </div>
+                    <div class="dashboard-chart-wrap donut-chart">
+                        <canvas id="asistenciaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">Tendencia reciente de asistencia</h5>
+                            <p class="text-muted mb-0 small">Porcentaje de presentes en los ultimos dias habiles visibles.</p>
+                        </div>
+                    </div>
+                    <div class="dashboard-chart-wrap line-chart">
+                        <canvas id="tendenciaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">Estado del rendimiento</h5>
+                            <p class="text-muted mb-0 small">{% if es_estudiante_dashboard %}Lectura personal de tus notas en riesgo, nivel estable y alto desempeno.{% else %}Lectura general de notas en riesgo, nivel estable y alto desempeno.{% endif %}</p>
+                        </div>
+                        <a href="{% url 'resumen_calificaciones' %}" class="btn btn-sm btn-outline-primary">{% if es_estudiante_dashboard %}Ver mis notas{% else %}Ver resumen{% endif %}</a>
+                    </div>
+                    <div class="dashboard-chart-wrap bar-chart">
+                        <canvas id="rendimientoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">{% if es_estudiante_dashboard %}Comportamiento de asistencia{% else %}Grupos con mas ausencias{% endif %}</h5>
+                            <p class="text-muted mb-0 small">{% if es_estudiante_dashboard %}Lectura de inasistencias sobre tu informacion visible.{% else %}Priorizacion de seguimiento por grupo visible.{% endif %}</p>
+                        </div>
+                        <a href="{% url 'resumen_asistencia' %}" class="btn btn-sm btn-outline-primary">{% if es_estudiante_dashboard %}Ver mi asistencia{% else %}Ver resumen{% endif %}</a>
+                    </div>
+                    <div class="dashboard-chart-wrap bar-chart">
+                        <canvas id="gruposChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">{% if es_estudiante_dashboard %}Mis materias en seguimiento{% else %}Bajo rendimiento{% endif %}</h5>
+                        <a href="{% url 'resumen_calificaciones' %}" class="btn btn-sm btn-outline-primary">{% if es_estudiante_dashboard %}Ver mis notas{% else %}Ver resumen{% endif %}</a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Estudiante</th>
+                                    <th class="text-center">Grupo</th>
+                                    <th class="text-center">Promedio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for estudiante in bajo_rendimiento_estudiantes %}
+                                <tr>
+                                    <td>{{ estudiante.apellidos }} {{ estudiante.nombres }}</td>
+                                    <td class="text-center">{{ estudiante.grupo }}</td>
+                                    <td class="text-center">{{ estudiante.promedio_general|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">{% if es_estudiante_dashboard %}No tienes materias en riesgo actualmente.{% else %}No hay estudiantes con promedio en riesgo.{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">{% if es_estudiante_dashboard %}Mis alertas activas{% else %}Alertas activas destacadas{% endif %}</h5>
+                        <a href="{% if es_estudiante_dashboard %}{% url 'mi_seguimiento_estudiante' %}{% else %}{% url 'gestion_seguimiento' %}{% endif %}" class="btn btn-sm btn-outline-primary">Ver seguimiento</a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Estudiante</th>
+                                    <th>Tipo</th>
+                                    <th class="text-center">Nivel</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alerta in alertas_destacadas %}
+                                <tr>
+                                    <td>{{ alerta.estudiante.apellidos }} {{ alerta.estudiante.nombres }}</td>
+                                    <td>{{ alerta.tipo_alerta.nombre }}</td>
+                                    <td class="text-center">
+                                        {% if alerta.nivel == 'CRITICO' %}
+                                            <span class="report-status-badge">Critico</span>
+                                        {% elif alerta.nivel == 'RIESGO' %}
+                                            <span class="report-status-badge report-status-a">Riesgo</span>
+                                        {% elif alerta.nivel == 'ATENCION' %}
+                                            <span class="report-status-badge report-status-t">Atencion</span>
+                                        {% else %}
+                                            <span class="report-status-badge">{{ alerta.nivel }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">No hay alertas activas.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">{% if es_estudiante_dashboard %}Mis ausencias registradas{% else %}Estudiantes con mas ausencias{% endif %}</h5>
+                        <a href="{% url 'resumen_asistencia' %}" class="btn btn-sm btn-outline-primary">{% if es_estudiante_dashboard %}Ver mi asistencia{% else %}Ver resumen{% endif %}</a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Estudiante</th>
+                                    <th class="text-center">Grupo</th>
+                                    <th class="text-center">Ausencias</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for estudiante in top_ausencias %}
+                                <tr>
+                                    <td>{{ estudiante.apellidos }} {{ estudiante.nombres }}</td>
+                                    <td class="text-center">{{ estudiante.grupo }}</td>
+                                    <td class="text-center">{{ estudiante.total_ausentes }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">{% if es_estudiante_dashboard %}No tienes ausencias registradas actualmente.{% else %}No hay datos suficientes.{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1">{% if es_estudiante_dashboard %}Mi horario de {{ dia_horario }}{% else %}Agenda academica de {{ dia_horario }}{% endif %}</h5>
+                    <p class="text-muted mb-0">{% if es_estudiante_dashboard %}Bloques programados para tu grupo durante la jornada actual.{% else %}Bloques programados para seguimiento operativo del dia.{% endif %}</p>
+                </div>
+                <span class="header-detail-chip"><strong>Total:</strong> {{ total_bloques_hoy }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle custom-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Grupo</th>
+                            <th>Asignatura</th>
+                            <th>Docente</th>
+                            <th>Aula</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bloque in bloques_hoy %}
+                        <tr>
+                            <td>{{ bloque.hora_inicio|time:"H:i" }} - {{ bloque.hora_fin|time:"H:i" }}</td>
+                            <td>{{ bloque.carga_academica.grupo }}</td>
+                            <td>{{ bloque.carga_academica.asignatura.nombre }}</td>
+                            <td>{{ bloque.carga_academica.docente.get_full_name|default:bloque.carga_academica.docente.username }}</td>
+                            <td>{{ bloque.aula|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No hay bloques programados para este dia.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ asistencia_chart_labels|json_script:"dashboard-asistencia-labels" }}
+{{ asistencia_chart_data|json_script:"dashboard-asistencia-data" }}
+{{ tendencia_chart_labels|json_script:"dashboard-tendencia-labels" }}
+{{ tendencia_chart_data|json_script:"dashboard-tendencia-data" }}
+{{ rendimiento_chart_labels|json_script:"dashboard-rendimiento-labels" }}
+{{ rendimiento_chart_data|json_script:"dashboard-rendimiento-data" }}
+{{ grupos_chart_labels|json_script:"dashboard-grupos-labels" }}
+{{ grupos_chart_data|json_script:"dashboard-grupos-data" }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function parseChartData(id) {
+        const node = document.getElementById(id);
+        return node ? JSON.parse(node.textContent) : [];
+    }
+
+    const chartPalette = {
+        blue: '#2563eb',
+        cyan: '#0ea5e9',
+        emerald: '#10b981',
+        amber: '#f59e0b',
+        rose: '#ef4444',
+        slate: '#475569',
+        dark: '#0f172a'
+    };
+
+    const asistenciaCtx = document.getElementById('asistenciaChart');
+    if (asistenciaCtx) {
+        new Chart(asistenciaCtx, {
+            type: 'doughnut',
+            data: {
+                labels: parseChartData('dashboard-asistencia-labels'),
+                datasets: [{
+                    data: parseChartData('dashboard-asistencia-data'),
+                    backgroundColor: [chartPalette.emerald, chartPalette.rose, chartPalette.amber, chartPalette.cyan],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 18,
+                            font: { weight: '700' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const tendenciaCtx = document.getElementById('tendenciaChart');
+    if (tendenciaCtx) {
+        new Chart(tendenciaCtx, {
+            type: 'line',
+            data: {
+                labels: parseChartData('dashboard-tendencia-labels'),
+                datasets: [{
+                    label: 'Asistencia %',
+                    data: parseChartData('dashboard-tendencia-data'),
+                    borderColor: chartPalette.blue,
+                    backgroundColor: 'rgba(37, 99, 235, 0.16)',
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: (value) => value + '%'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const rendimientoCtx = document.getElementById('rendimientoChart');
+    if (rendimientoCtx) {
+        new Chart(rendimientoCtx, {
+            type: 'bar',
+            data: {
+                labels: parseChartData('dashboard-rendimiento-labels'),
+                datasets: [{
+                    data: parseChartData('dashboard-rendimiento-data'),
+                    backgroundColor: [chartPalette.rose, chartPalette.amber, chartPalette.emerald],
+                    borderRadius: 12,
+                    maxBarThickness: 56
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    const gruposCtx = document.getElementById('gruposChart');
+    if (gruposCtx) {
+        new Chart(gruposCtx, {
+            type: 'bar',
+            data: {
+                labels: parseChartData('dashboard-grupos-labels'),
+                datasets: [{
+                    label: 'Ausencias',
+                    data: parseChartData('dashboard-grupos-data'),
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    borderRadius: 12,
+                    maxBarThickness: 48
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Inactivar estudiante{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <h3 class="mb-3">Inactivar estudiante</h3>
+        <p>
+            ¿Seguro que deseas inactivar a
+            <strong>{{ estudiante.nombres }} {{ estudiante.apellidos }}</strong>?
+        </p>
+        <p class="text-muted">
+            El estudiante no se eliminará de la base de datos, solo quedará inactivo.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Sí, inactivar</button>
+            <a href="{% url 'lista_estudiantes' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion de reportes{% endblock %}
+{% block page_title %}Seguimiento academico{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">Gestiona reportes semanales y mensuales para acudientes con trazabilidad academica y de asistencia.</p>{% endblock %}
+{% block header_details %}
+<div class="app-header-details">
+    <span class="header-detail-chip">
+        <i class="bi bi-envelope-check"></i>
+        <span>Enviados: <strong>{{ total_reportes_enviados }}</strong></span>
+    </span>
+    <span class="header-detail-chip">
+        <i class="bi bi-clock-history"></i>
+        <span>Pendientes: <strong>{{ total_reportes_pendientes }}</strong></span>
+    </span>
+    <span class="header-detail-chip">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>Alertas activas: <strong>{% if filtros_aplicados %}{{ alertas_filtradas }}{% else %}{{ total_alertas_activas }}{% endif %}</strong></span>
+    </span>
+</div>
+{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions header-module-actions-tight">
+    <a href="{% url 'lista_alertas' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i> Ir a alertas
+    </a>
+    <button
+        type="button"
+        class="btn {% if estado_correo.configurado %}btn-success smtp-status-btn smtp-status-btn-ok{% else %}btn-warning smtp-status-btn smtp-status-btn-pending{% endif %}"
+        data-bs-toggle="modal"
+        data-bs-target="#smtpStatusModal"
+    >
+        <i class="bi bi-plug-fill me-1"></i> Estado SMTP
+    </button>
+    <form method="post" action="{% url 'enviar_reportes_masivos' %}?{{ querystring }}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary" {% if not con_correo or not filtros_aplicados %}disabled{% endif %}>
+            <i class="bi bi-send-fill me-1"></i> Enviar reportes
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% include 'includes/seguimiento_tabs.html' with active_tab='reportes' %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <span class="visually-hidden">Modulo de reportes a acudientes</span>
+            <form method="get" class="row g-3 align-items-end">
+                <input type="hidden" name="filtrar" value="1">
+
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label fw-semibold">Buscar</label>
+                    <input type="text" name="busqueda" value="{{ busqueda }}" class="form-control" placeholder="Estudiante, codigo, acudiente o correo">
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Grado</label>
+                    <select name="grado" id="grado-filter" class="form-select">
+                        <option value="">Todos</option>
+                        {% for grado in grados %}
+                            <option value="{{ grado.id }}" {% if grado_id == grado.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grado.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Grupo</label>
+                    <select name="grupo" id="grupo-filter" class="form-select" data-selected="{{ grupo_id }}">
+                        <option value="">Todos</option>
+                        {% for grupo in grupos %}
+                            <option value="{{ grupo.id }}" data-grado="{{ grupo.grado_id }}" {% if grupo_id == grupo.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grupo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Periodo</label>
+                    <select name="periodo" class="form-select">
+                        <option value="semanal" {% if periodo == 'semanal' %}selected{% endif %}>Semanal</option>
+                        <option value="mensual" {% if periodo == 'mensual' %}selected{% endif %}>Mensual</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-1 col-md-6">
+                    <label class="form-label fw-semibold">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="pendiente" {% if estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="enviado" {% if estado == 'enviado' %}selected{% endif %}>Enviado</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-12">
+                    <div class="d-grid gap-2 filter-actions-compact">
+                    <button type="submit" class="btn btn-dark">Buscar</button>
+                        <a href="{% url 'gestion_reportes' %}" class="btn btn-outline-secondary">Limpiar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm module-scroll-card">
+        <div class="card-body">
+            {% if filtros_aplicados %}
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                    <div class="small text-muted">
+                        Mostrando estudiantes de 10 en 10 para gestionar los envios de reportes.
+                    </div>
+                    <div class="pagination-compact-summary">
+                        <span>Total filtrado</span>
+                        <strong>{{ total_estudiantes }}</strong>
+                    </div>
+                </div>
+
+                <div class="module-scroll-panel table-panel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Estudiante</th>
+                                    <th class="text-center">Grupo</th>
+                                    <th>Acudiente</th>
+                                    <th>Correo acudiente</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for estudiante in page_obj %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ estudiante.apellidos }} {{ estudiante.nombres }}</div>
+                                        <small class="text-muted">{{ estudiante.codigo }}</small>
+                                    </td>
+                                    <td class="text-center">{{ estudiante.grupo }}</td>
+                                    <td>{{ estudiante.acudiente }}</td>
+                                    <td>
+                                        {% if estudiante.correo_acudiente %}
+                                            {{ estudiante.correo_acudiente }}
+                                        {% else %}
+                                            <span class="text-muted">No registrado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if estudiante.tiene_reporte_enviado %}
+                                            <span class="badge rounded-pill bg-success-subtle text-success-emphasis px-3 py-2">Enviado</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2">Pendiente</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                            <a href="{% url 'reporte_estudiante' estudiante.id %}?periodo={{ periodo }}" class="btn btn-sm btn-info text-white" title="Ver reporte">
+                                                <i class="bi bi-eye-fill"></i>
+                                            </a>
+                                            <a href="{% url 'descargar_reporte_estudiante' estudiante.id periodo %}" class="btn btn-sm btn-success" title="Descargar">
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                            </a>
+                                            <a href="{% url 'enviar_reporte_estudiante' estudiante.id periodo %}" class="btn btn-sm btn-primary {% if not estudiante.correo_acudiente %}disabled{% endif %}" title="Enviar al acudiente">
+                                                <i class="bi bi-envelope-fill"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">No hay estudiantes para esos filtros.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {% include 'includes/compact_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_param=page_param querystring=querystring %}
+            {% else %}
+                <div class="text-center py-5 text-muted module-scroll-panel-empty">
+                    <i class="bi bi-funnel fs-2 d-block mb-3"></i>
+                    <h5 class="fw-semibold text-dark">Aplica un filtro para consultar reportes</h5>
+                    <p class="mb-0">Este modulo muestra la informacion solo cuando realizas una busqueda filtrada.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade" id="smtpStatusModal" tabindex="-1" aria-labelledby="smtpStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <div>
+                    <span class="visually-hidden">Estado del correo</span>
+                    <h5 class="modal-title fw-bold" id="smtpStatusModalLabel">Estado de conexion SMTP</h5>
+                    <p class="text-muted mb-0 small">Resumen del servicio de correo configurado para el envio de reportes.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    {% if estado_correo.configurado %}
+                        <span class="badge text-bg-success">Configurado</span>
+                    {% else %}
+                        <span class="badge text-bg-warning">Pendiente</span>
+                    {% endif %}
+                    <span class="badge text-bg-light border text-dark">Backend: {{ estado_correo.backend }}</span>
+                </div>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Estado general</div>
+                    <div class="fw-semibold">{{ estado_correo.mensaje }}</div>
+                </div>
+
+                <div class="rounded-4 border bg-light p-3">
+                    <div class="small text-muted mb-2">Detalle tecnico</div>
+                    <div class="small text-break">
+                        {% if estado_correo.configurado %}
+                            La configuracion SMTP esta lista para usarse desde este modulo.
+                        {% else %}
+                            El sistema aun no tiene una configuracion completa para enviar correos. Revisa las credenciales y vuelve a probar la conexion.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <form method="post" action="{% url 'probar_correo_reportes' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-dark">
+                        <i class="bi bi-plug-fill me-1"></i> Probar conexion SMTP
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    const gradoFilter = document.getElementById('grado-filter');
+    const grupoFilter = document.getElementById('grupo-filter');
+    const grupos = [
+        {% for grupo in todos_grupos %}
+            {
+                id: '{{ grupo.id }}',
+                gradoId: '{{ grupo.grado_id }}',
+                label: '{{ grupo|escapejs }}'
+            }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function refreshGrupoOptions() {
+        const selectedGrado = gradoFilter.value;
+        const selectedGrupo = grupoFilter.dataset.selected || grupoFilter.value;
+        const gruposVisibles = selectedGrado
+            ? grupos.filter((grupo) => grupo.gradoId === selectedGrado)
+            : grupos;
+
+        grupoFilter.innerHTML = '<option value="">Todos</option>';
+        gruposVisibles.forEach((grupo) => {
+            const option = document.createElement('option');
+            option.value = grupo.id;
+            option.textContent = grupo.label;
+            option.selected = grupo.id === selectedGrupo;
+            grupoFilter.appendChild(option);
+        });
+
+        if (!gruposVisibles.some((grupo) => grupo.id === selectedGrupo)) {
+            grupoFilter.value = '';
+            grupoFilter.dataset.selected = '';
+        }
+    }
+
+    gradoFilter.addEventListener('change', () => {
+        grupoFilter.dataset.selected = '';
+        refreshGrupoOptions();
+    });
+    refreshGrupoOptions();
+</script>
+{% endblock %}

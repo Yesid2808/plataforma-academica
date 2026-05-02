@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Plataforma Academica{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/admin-custom.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div class="admin-brand-shell">
+    <div class="admin-brand-icon">
+        <span>PA</span>
+    </div>
+    <div class="admin-brand-copy">
+        <h1 id="site-name"><a href="{% url 'admin:index' %}">Plataforma Academica</a></h1>
+        <p>Gestion institucional inteligente</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

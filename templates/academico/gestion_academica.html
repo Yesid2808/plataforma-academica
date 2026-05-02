@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión académica{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="fw-bold mb-1">Gestión académica</h2>
+            <p class="text-muted mb-0">Administra catálogos base de la institución sin entrar al panel de Django admin.</p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        {% for item in resumen %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">{{ item.titulo }}</h5>
+                            <p class="text-muted mb-0">{{ item.total }} registros</p>
+                        </div>
+                        <span class="badge bg-primary-subtle text-primary-emphasis">{{ item.total }}</span>
+                    </div>
+
+                    <div class="mt-auto d-flex gap-2">
+                        <a href="{% url 'lista_catalogo' item.slug %}" class="btn btn-outline-primary btn-sm">
+                            Ver listado
+                        </a>
+                        <a href="{% url 'crear_catalogo' item.slug %}" class="btn btn-primary btn-sm">
+                            Crear
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

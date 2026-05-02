@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle estudiante{% endblock %}
+{% block page_title %}{% if user.rol == 'EST' %}Mi perfil{% else %}Detalle del estudiante{% endif %}{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">{% if user.rol == 'EST' %}Consulta tu informacion academica, tus datos basicos y el horario oficial de tu grupo.{% else %}Consulta los datos personales, del acudiente y el horario asociado al estudiante.{% endif %}</p>{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{% if user.rol == 'EST' %}Mi perfil academico{% else %}Detalle del estudiante{% endif %}</h2>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% if user.rol == 'EST' %}{% url 'mi_seguimiento_estudiante' %}{% else %}{% url 'reporte_estudiante' estudiante.id %}?next={{ back_url|urlencode }}{% endif %}" class="btn btn-primary">
+            {% if user.rol == 'EST' %}Mi seguimiento{% else %}Reportes{% endif %}
+        </a>
+        {% if user.rol == 'ADMIN' or user.rol == 'COORD' or user.is_superuser %}
+        <a href="{% url 'editar_estudiante' estudiante.id %}?next={{ back_url|urlencode }}" class="btn btn-warning">Editar</a>
+        {% endif %}
+        <a href="{{ back_url }}" class="btn btn-secondary">{% if user.rol == 'EST' %}Regresar{% else %}Volver{% endif %}</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center">
+                {% if estudiante.foto %}
+                    <img src="{{ estudiante.foto.url }}" alt="Foto del estudiante" class="img-fluid rounded mb-3" style="max-height: 250px;">
+                {% else %}
+                    <div class="border rounded p-5 text-muted">Sin foto</div>
+                {% endif %}
+                <h5 class="mt-3">{{ estudiante.nombres }} {{ estudiante.apellidos }}</h5>
+                <p class="mb-1"><strong>Codigo:</strong> {{ estudiante.codigo }}</p>
+                <p class="mb-1"><strong>Grupo:</strong> {{ estudiante.grupo }}</p>
+                {% if user.rol == 'EST' %}
+                <p class="mb-1"><strong>Usuario:</strong> {{ request.user.username }}</p>
+                {% endif %}
+                <p class="mb-0">
+                    {% if estudiante.activo %}
+                        <span class="badge bg-success">Activo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h5 class="mb-3">Informacion del estudiante</h5>
+                <p><strong>Tipo de documento:</strong> {{ estudiante.get_tipo_documento_display }}</p>
+                <p><strong>Documento:</strong> {{ estudiante.documento }}</p>
+                <p><strong>Genero:</strong> {{ estudiante.get_genero_display }}</p>
+                <p><strong>Fecha de nacimiento:</strong> {{ estudiante.fecha_nacimiento }}</p>
+                <p><strong>Correo:</strong> {{ estudiante.correo|default:"No registrado" }}</p>
+                <p><strong>WhatsApp:</strong> {{ estudiante.whatsapp|default:"No registrado" }}</p>
+
+                {% if estudiante.whatsapp and user.rol != 'EST' %}
+                    <a href="https://wa.me/57{{ estudiante.whatsapp }}" target="_blank" class="btn btn-success btn-sm">
+                        Abrir chat estudiante
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h5 class="mb-3">Datos del acudiente</h5>
+                <p><strong>Nombre:</strong> {{ estudiante.acudiente }}</p>
+                <p><strong>Telefono:</strong> {{ estudiante.telefono_acudiente }}</p>
+                <p><strong>Correo:</strong> {{ estudiante.correo_acudiente|default:"No registrado" }}</p>
+                <p><strong>WhatsApp:</strong> {{ estudiante.whatsapp_acudiente|default:"No registrado" }}</p>
+                <p><strong>Direccion:</strong> {{ estudiante.direccion|default:"No registrada" }}</p>
+
+                {% if estudiante.whatsapp_acudiente and user.rol != 'EST' %}
+                    <a href="https://wa.me/57{{ estudiante.whatsapp_acudiente }}" target="_blank" class="btn btn-success btn-sm">
+                        Abrir chat acudiente
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mt-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">{% if user.rol == 'EST' %}Horario de mi grupo{% else %}Horario del estudiante{% endif %}</h5>
+            <a href="{% url 'horarios_academicos' %}?grupo={{ estudiante.grupo.id }}" class="btn btn-sm btn-outline-primary">Ver horario completo</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle custom-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Dia</th>
+                        <th>Hora</th>
+                        <th>Asignatura</th>
+                        <th>Docente</th>
+                        <th>Aula</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for horario in horarios %}
+                    <tr>
+                        <td>{{ horario.get_dia_semana_display }}</td>
+                        <td>{{ horario.hora_inicio|time:"H:i" }} - {{ horario.hora_fin|time:"H:i" }}</td>
+                        <td>{{ horario.carga_academica.asignatura.nombre }}</td>
+                        <td>{{ horario.carga_academica.docente.get_full_name|default:horario.carga_academica.docente.username }}</td>
+                        <td>{{ horario.aula|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">Este grupo aun no tiene horario registrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

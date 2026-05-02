@@ -1,0 +1,443 @@
+{% extends 'base.html' %}
+
+{% block title %}Registrar asistencia{% endblock %}
+{% block page_title %}Registro de asistencia{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">La asistencia se registra para la fecha actual del sistema.</p>{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions">
+    <button
+        class="btn btn-outline-dark"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#filtroRegistrosAsistencia"
+        aria-expanded="{% if registros_filtrados or filtro_carga or filtro_fecha %}true{% else %}false{% endif %}"
+        aria-controls="filtroRegistrosAsistencia"
+    >
+        <i class="bi bi-clock-history me-1"></i> Ver historial
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                <div>
+                    <h2 class="fw-bold mb-1">Buscar grupo para asistencia</h2>
+                    <p class="text-muted mb-0">Selecciona primero el grado, luego el grupo y finalmente la carga academica del docente.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="header-detail-chip"><strong>Cargas:</strong> {{ cargas|length }}</span>
+                    <span class="header-detail-chip"><strong>Fecha:</strong> {{ fecha }}</span>
+                </div>
+            </div>
+            <form method="post" class="row g-3 align-items-end asistencia-filter-row">
+                {% csrf_token %}
+
+                <div class="col-xl-2 col-lg-3 col-md-6">
+                    <label class="form-label fw-semibold">Grado</label>
+                    <select id="registro-grado-filter" class="form-select">
+                        <option value="">Todos</option>
+                        {% for grado in grados %}
+                            <option value="{{ grado.id }}" {% if carga and carga.grupo.grado_id == grado.id %}selected{% endif %}>
+                                {{ grado.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-xl-2 col-lg-3 col-md-6">
+                    <label class="form-label fw-semibold">Grupo</label>
+                    <select id="registro-grupo-filter" class="form-select" data-selected="{% if carga %}{{ carga.grupo_id }}{% endif %}">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+
+                <div class="col-xl-4 col-lg-6 col-md-6">
+                    <label class="form-label fw-semibold">Carga academica</label>
+                    <select name="carga_academica" id="registro-carga-filter" class="form-select" data-selected="{% if carga %}{{ carga.id }}{% endif %}" required>
+                        <option value="">Seleccione</option>
+                    </select>
+                </div>
+
+                <div class="col-xl-2 col-lg-3 col-md-6">
+                    <label class="form-label fw-semibold">Fecha actual</label>
+                    <input type="text" class="form-control" value="{{ fecha }}" readonly>
+                </div>
+
+                <div class="col-xl-2 col-lg-3 col-md-12 asistencia-filter-submit">
+                    <label class="form-label fw-semibold d-none d-xl-block">&nbsp;</label>
+                    <button type="submit" name="buscar" class="btn btn-dark w-100">
+                        <i class="bi bi-search me-1"></i> Buscar grupo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if estudiantes %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="mb-3">
+                <h5 class="fw-bold mb-1">{{ carga.asignatura.nombre }} - {{ carga.grupo }}</h5>
+                <p class="text-muted mb-0">Fecha: {{ fecha }}</p>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <span class="header-detail-chip"><strong>Estudiantes:</strong> {{ estudiantes|length }}</span>
+                    <span class="header-detail-chip"><strong>Docente:</strong> {{ carga.docente.get_full_name|default:carga.docente.username }}</span>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <div class="attendance-overview-card">
+                            <small>Curso activo</small>
+                            <strong>{{ carga.grupo }}</strong>
+                            <span>{{ carga.asignatura.nombre }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="attendance-overview-card">
+                            <small>Docente</small>
+                            <strong>{{ carga.docente.get_full_name|default:carga.docente.username }}</strong>
+                            <span>Registro del dia</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="attendance-overview-card">
+                            <small>Total de estudiantes</small>
+                            <strong>{{ estudiantes|length }}</strong>
+                            <span>Listado listo para diligenciar</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if asistencia_existente %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        Ya existe una asistencia registrada para hoy en esta carga academica. Puedes modificarla.
+                    </div>
+                {% endif %}
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="carga_academica" value="{{ carga.id }}">
+
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                    <div class="small text-muted">
+                        Mostrando estudiantes de 8 en 8 para facilitar el registro del grupo.
+                    </div>
+                    <div id="asistencia-pagination-top" class="pagination-compact justify-content-md-end"></div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle custom-table mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Codigo</th>
+                                <th>Estudiante</th>
+                                <th class="text-center">Presente</th>
+                                <th class="text-center">Ausente</th>
+                                <th class="text-center">Tarde</th>
+                                <th class="text-center">Justificado</th>
+                                <th>Observacion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for estudiante in estudiantes %}
+                            <tr class="asistencia-student-row">
+                                <td class="text-center fw-semibold">{{ estudiante.codigo }}</td>
+                                <td>
+                                    <div class="attendance-student-name">
+                                        {% if estudiante.foto %}
+                                            <img src="{{ estudiante.foto.url }}" alt="Foto de {{ estudiante.nombres }}" class="student-grade-photo">
+                                        {% else %}
+                                            <div class="student-grade-photo student-grade-photo-placeholder">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <div class="fw-semibold">{{ estudiante.apellidos }} {{ estudiante.nombres }}</div>
+                                            <small class="text-muted">Codigo {{ estudiante.codigo }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <input type="radio" name="estado_{{ estudiante.id }}" value="P" {% if estudiante.estado_guardado == 'P' %}checked{% endif %}>
+                                </td>
+                                <td class="text-center">
+                                    <input type="radio" name="estado_{{ estudiante.id }}" value="A" {% if estudiante.estado_guardado == 'A' %}checked{% endif %}>
+                                </td>
+                                <td class="text-center">
+                                    <input type="radio" name="estado_{{ estudiante.id }}" value="T" {% if estudiante.estado_guardado == 'T' %}checked{% endif %}>
+                                </td>
+                                <td class="text-center">
+                                    <input type="radio" name="estado_{{ estudiante.id }}" value="J" {% if estudiante.estado_guardado == 'J' %}checked{% endif %}>
+                                </td>
+                                <td>
+                                    <input
+                                        type="text"
+                                        name="observacion_{{ estudiante.id }}"
+                                        class="form-control"
+                                        placeholder="Opcional"
+                                        value="{{ estudiante.observacion_guardada }}"
+                                    >
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-3">
+                    <div id="asistencia-pagination-summary" class="pagination-compact-summary"></div>
+                    <div id="asistencia-pagination-bottom" class="pagination-compact justify-content-md-end"></div>
+                </div>
+
+                <div class="mt-4 text-end">
+                    {% if asistencia_existente %}
+                        <button type="submit" name="modificar" class="btn btn-warning">
+                            <i class="bi bi-pencil-square me-1"></i> Modificar asistencia
+                        </button>
+                    {% else %}
+                        <button type="submit" name="guardar" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i> Guardar asistencia
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="collapse {% if registros_filtrados or filtro_carga or filtro_fecha %}show{% endif %}" id="filtroRegistrosAsistencia">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">Historial de asistencia</h5>
+                        <p class="text-muted mb-0">Consulta registros anteriores por carga y fecha.</p>
+                    </div>
+                </div>
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Carga academica</label>
+                        <select name="carga" class="form-select">
+                            <option value="">Todas</option>
+                            {% for opcion in cargas_filtro %}
+                                <option value="{{ opcion.id }}" {% if filtro_carga == opcion.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ opcion.asignatura.nombre }} - {{ opcion.grupo }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Fecha</label>
+                        <input type="date" name="fecha" value="{{ filtro_fecha }}" class="form-control">
+                    </div>
+                    <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-dark">Buscar historial</button>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <a href="{% url 'registrar_asistencia' %}" class="btn btn-outline-secondary">Limpiar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if registros_filtrados %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle custom-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Asignatura</th>
+                                <th>Grupo</th>
+                                <th>Estudiante</th>
+                                <th class="text-center">Estado</th>
+                                <th>Observacion</th>
+                                <th>Registrado por</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for registro in registros_filtrados %}
+                            <tr>
+                                <td>{{ registro.fecha|date:"Y-m-d" }}</td>
+                                <td>{{ registro.carga_academica.asignatura.nombre }}</td>
+                                <td>{{ registro.carga_academica.grupo }}</td>
+                                <td>
+                                    <div class="student-grade-cell">
+                                        {% if registro.estudiante.foto %}
+                                            <img src="{{ registro.estudiante.foto.url }}" alt="Foto de {{ registro.estudiante.nombres }}" class="student-grade-photo">
+                                        {% else %}
+                                            <div class="student-grade-photo student-grade-photo-placeholder">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                        {% endif %}
+                                        <div>
+                                            <div class="fw-semibold">{{ registro.estudiante.apellidos }} {{ registro.estudiante.nombres }}</div>
+                                            <small class="text-muted">Codigo {{ registro.estudiante.codigo }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center">{{ registro.get_estado_display }}</td>
+                                <td>{{ registro.observacion|default:"-" }}</td>
+                                <td>{{ registro.registrado_por.get_full_name|default:registro.registrado_por.username|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    const gradoFilter = document.getElementById('registro-grado-filter');
+    const grupoFilter = document.getElementById('registro-grupo-filter');
+    const cargaFilter = document.getElementById('registro-carga-filter');
+
+    const grupos = [
+        {% for grupo in grupos %}
+        {
+            id: '{{ grupo.id }}',
+            gradoId: '{{ grupo.grado_id }}',
+            label: '{{ grupo|escapejs }}'
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const cargas = [
+        {% for opcion in cargas %}
+        {
+            id: '{{ opcion.id }}',
+            grupoId: '{{ opcion.grupo_id }}',
+            label: '{{ opcion.asignatura.nombre|escapejs }} - {{ opcion.grupo|escapejs }}'
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function refreshGrupoOptions() {
+        const selectedGrado = gradoFilter.value;
+        const selectedGrupo = grupoFilter.dataset.selected || grupoFilter.value;
+        const gruposVisibles = selectedGrado
+            ? grupos.filter((grupo) => grupo.gradoId === selectedGrado)
+            : grupos;
+
+        grupoFilter.innerHTML = '<option value="">Todos</option>';
+        gruposVisibles.forEach((grupo) => {
+            const option = document.createElement('option');
+            option.value = grupo.id;
+            option.textContent = grupo.label;
+            option.selected = grupo.id === selectedGrupo;
+            grupoFilter.appendChild(option);
+        });
+
+        if (!gruposVisibles.some((grupo) => grupo.id === selectedGrupo)) {
+            grupoFilter.value = '';
+            grupoFilter.dataset.selected = '';
+        }
+    }
+
+    function refreshCargaOptions() {
+        const selectedGrupo = grupoFilter.value || grupoFilter.dataset.selected;
+        const selectedCarga = cargaFilter.dataset.selected || cargaFilter.value;
+        const cargasVisibles = selectedGrupo
+            ? cargas.filter((carga) => carga.grupoId === selectedGrupo)
+            : [];
+
+        cargaFilter.innerHTML = '<option value="">Seleccione</option>';
+        cargasVisibles.forEach((carga) => {
+            const option = document.createElement('option');
+            option.value = carga.id;
+            option.textContent = carga.label;
+            option.selected = carga.id === selectedCarga;
+            cargaFilter.appendChild(option);
+        });
+
+        if (!cargasVisibles.some((carga) => carga.id === selectedCarga)) {
+            cargaFilter.value = '';
+            cargaFilter.dataset.selected = '';
+        }
+    }
+
+    gradoFilter.addEventListener('change', () => {
+        grupoFilter.dataset.selected = '';
+        cargaFilter.dataset.selected = '';
+        refreshGrupoOptions();
+        refreshCargaOptions();
+    });
+
+    grupoFilter.addEventListener('change', () => {
+        cargaFilter.dataset.selected = '';
+        refreshCargaOptions();
+    });
+
+    refreshGrupoOptions();
+    refreshCargaOptions();
+
+    const rows = Array.from(document.querySelectorAll('.asistencia-student-row'));
+    const rowsPerPage = 8;
+    const topContainer = document.getElementById('asistencia-pagination-top');
+    const bottomContainer = document.getElementById('asistencia-pagination-bottom');
+    const summaryContainer = document.getElementById('asistencia-pagination-summary');
+
+    function renderPage(page) {
+        if (!rows.length || !topContainer || !bottomContainer || !summaryContainer) {
+            return;
+        }
+
+        const totalPages = Math.ceil(rows.length / rowsPerPage);
+        const safePage = Math.min(Math.max(page, 1), totalPages);
+        const start = (safePage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+
+        rows.forEach((row, index) => {
+            row.style.display = index >= start && index < end ? '' : 'none';
+        });
+
+        summaryContainer.innerHTML = '<span>Pagina</span><strong>' + safePage + '</strong><span>de</span><strong>' + totalPages + '</strong>';
+
+        const buildControls = (container) => {
+            container.innerHTML = '';
+
+            const prevButton = document.createElement('button');
+            prevButton.type = 'button';
+            prevButton.className = 'pagination-compact-btn is-nav';
+            prevButton.disabled = safePage === 1;
+            prevButton.innerHTML = '<i class="bi bi-chevron-left"></i>';
+            prevButton.addEventListener('click', () => renderPage(safePage - 1));
+            container.appendChild(prevButton);
+
+            for (let current = 1; current <= totalPages; current += 1) {
+                const pageButton = document.createElement('button');
+                pageButton.type = 'button';
+                pageButton.className = 'pagination-compact-btn' + (current === safePage ? ' is-active' : '');
+                pageButton.textContent = current;
+                pageButton.addEventListener('click', () => renderPage(current));
+                container.appendChild(pageButton);
+            }
+
+            const nextButton = document.createElement('button');
+            nextButton.type = 'button';
+            nextButton.className = 'pagination-compact-btn is-nav';
+            nextButton.disabled = safePage === totalPages;
+            nextButton.innerHTML = '<i class="bi bi-chevron-right"></i>';
+            nextButton.addEventListener('click', () => renderPage(safePage + 1));
+            container.appendChild(nextButton);
+        };
+
+        buildControls(topContainer);
+        buildControls(bottomContainer);
+    }
+
+    if (rows.length) {
+        renderPage(1);
+    }
+</script>
+{% endblock %}

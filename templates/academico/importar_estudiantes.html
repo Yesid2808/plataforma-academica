@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Importar estudiantes{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h2 class="fw-bold mb-1">Importar estudiantes desde Excel</h2>
+                <p class="text-muted mb-0">Usa la plantilla oficial para cargar informacion compatible con la base de datos y evitar errores de estructura.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'descargar_plantilla_estudiantes' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-download me-1"></i> Descargar plantilla
+                </a>
+                <a href="{% url 'lista_estudiantes' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Cargar archivo</h5>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Archivo Excel</label>
+                            {{ form.archivo }}
+                            <div class="form-text">Se recomienda usar la plantilla descargada directamente desde el sistema.</div>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar estudiantes
+                        </button>
+                    </form>
+
+                    <div class="alert alert-info mt-4 mb-0">
+                        La foto del estudiante no se importa por Excel. Se mantiene el cargue manual desde crear o editar estudiante.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">Campos requeridos por la BD</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Campo</th>
+                                    <th>Tipo</th>
+                                    <th>Requerido</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>tipo_documento</code></td><td>TI, CC, RC, CE</td><td>Si</td></tr>
+                                <tr><td><code>documento</code></td><td>Solo numeros</td><td>Si</td></tr>
+                                <tr><td><code>nombres</code></td><td>Texto</td><td>Si</td></tr>
+                                <tr><td><code>apellidos</code></td><td>Texto</td><td>Si</td></tr>
+                                <tr><td><code>genero</code></td><td>M o F</td><td>Si</td></tr>
+                                <tr><td><code>fecha_nacimiento</code></td><td>YYYY-MM-DD</td><td>Si</td></tr>
+                                <tr><td><code>grado</code></td><td>Texto</td><td>Si</td></tr>
+                                <tr><td><code>grupo</code></td><td>Texto</td><td>Si</td></tr>
+                                <tr><td><code>grupo_id</code></td><td>Numerico</td><td>Si</td></tr>
+                                <tr><td><code>correo</code></td><td>Email</td><td>Si</td></tr>
+                                <tr><td><code>whatsapp</code></td><td>Solo numeros</td><td>Si</td></tr>
+                                <tr><td><code>acudiente</code></td><td>Texto</td><td>Si</td></tr>
+                                <tr><td><code>correo_acudiente</code></td><td>Email</td><td>Si</td></tr>
+                                <tr><td><code>telefono_acudiente</code></td><td>Solo numeros</td><td>Si</td></tr>
+                                <tr><td><code>whatsapp_acudiente</code></td><td>Solo numeros</td><td>Si</td></tr>
+                                <tr><td><code>direccion</code></td><td>Texto</td><td>Si</td></tr>
+                                <tr><td><code>activo</code></td><td>true/false</td><td>Si</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="fw-bold mb-3">Vista de ejemplo organizada</h5>
+            <div class="table-responsive">
+                <table class="table table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>tipo_documento</th>
+                            <th>documento</th>
+                            <th>nombres</th>
+                            <th>apellidos</th>
+                            <th>genero</th>
+                            <th>fecha_nacimiento</th>
+                            <th>grado</th>
+                            <th>grupo</th>
+                            <th>grupo_id</th>
+                            <th>correo</th>
+                            <th>whatsapp</th>
+                            <th>acudiente</th>
+                            <th>correo_acudiente</th>
+                            <th>telefono_acudiente</th>
+                            <th>whatsapp_acudiente</th>
+                            <th>direccion</th>
+                            <th>activo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>TI</td>
+                            <td>1032456789</td>
+                            <td>Juan David</td>
+                            <td>Perez Gomez</td>
+                            <td>M</td>
+                            <td>2010-05-12</td>
+                            <td>8</td>
+                            <td>A</td>
+                            <td>1</td>
+                            <td>juan@email.com</td>
+                            <td>3001234567</td>
+                            <td>Ana Maria Perez</td>
+                            <td>ana@email.com</td>
+                            <td>3001234567</td>
+                            <td>3001234567</td>
+                            <td>Calle 45 # 12-30</td>
+                            <td>true</td>
+                        </tr>
+                        <tr>
+                            <td>TI</td>
+                            <td>1045678901</td>
+                            <td>Maria Jose</td>
+                            <td>Gomez Torres</td>
+                            <td>F</td>
+                            <td>2011-07-03</td>
+                            <td>8</td>
+                            <td>B</td>
+                            <td>2</td>
+                            <td>maria@email.com</td>
+                            <td>3009876543</td>
+                            <td>Luis Fernando Gomez</td>
+                            <td>luis@email.com</td>
+                            <td>3009876543</td>
+                            <td>3009876543</td>
+                            <td>Carrera 21 # 48-16</td>
+                            <td>true</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mt-3 mb-0">Todos los campos del archivo son obligatorios. La plantilla descargable incluye hojas adicionales con instrucciones y el listado real de grupos activos.</p>
+        </div>
+    </div>
+
+    {% if errores %}
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="mb-3 text-danger fw-bold">Observaciones encontradas</h5>
+            <ul class="mb-0">
+                {% for error in errores %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

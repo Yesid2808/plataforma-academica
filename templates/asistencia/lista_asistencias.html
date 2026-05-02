@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Listado de asistencias{% endblock %}
+{% block page_title %}Control de asistencia{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h2 class="mb-1 fw-bold">Listado de asistencias</h2>
+                <p class="text-muted mb-0">Consulta y filtra los registros de asistencia realizados en la plataforma.</p>
+            </div>
+
+            <div>
+                <a href="{% url 'registrar_asistencia' %}" class="btn btn-primary">
+                    <i class="bi bi-calendar-check-fill me-1"></i> Registrar asistencia
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label fw-semibold">Buscar estudiante</label>
+                    <input type="text" name="busqueda" value="{{ busqueda }}" class="form-control"
+                           placeholder="Codigo, documento, nombres o apellidos">
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Fecha</label>
+                    <input type="date" name="fecha" value="{{ fecha }}" class="form-control">
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Grupo</label>
+                    <select name="grupo" class="form-select">
+                        <option value="">Todos</option>
+                        {% for grupo in grupos %}
+                            <option value="{{ grupo.id }}" {% if grupo_id == grupo.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grupo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Asignatura</label>
+                    <select name="asignatura" class="form-select">
+                        <option value="">Todas</option>
+                        {% for asignatura in asignaturas %}
+                            <option value="{{ asignatura.id }}" {% if asignatura_id == asignatura.id|stringformat:"s" %}selected{% endif %}>
+                                {{ asignatura.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="P" {% if estado == 'P' %}selected{% endif %}>Presente</option>
+                        <option value="A" {% if estado == 'A' %}selected{% endif %}>Ausente</option>
+                        <option value="T" {% if estado == 'T' %}selected{% endif %}>Tarde</option>
+                        <option value="J" {% if estado == 'J' %}selected{% endif %}>Justificado</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-1 col-md-6">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-dark">
+                            <i class="bi bi-funnel-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle custom-table mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Fecha</th>
+                            <th class="text-center">Codigo</th>
+                            <th>Estudiante</th>
+                            <th class="text-center">Grupo</th>
+                            <th>Asignatura</th>
+                            <th class="text-center">Estado</th>
+                            <th>Observacion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asistencia in page_obj %}
+                        <tr>
+                            <td class="text-center">{{ asistencia.fecha }}</td>
+                            <td class="text-center fw-semibold">{{ asistencia.estudiante.codigo }}</td>
+                            <td>
+                                <div class="student-grade-cell">
+                                    {% if asistencia.estudiante.foto %}
+                                        <img src="{{ asistencia.estudiante.foto.url }}" alt="Foto de {{ asistencia.estudiante.nombres }}" class="student-grade-photo">
+                                    {% else %}
+                                        <div class="student-grade-photo student-grade-photo-placeholder">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <div class="fw-semibold">{{ asistencia.estudiante.apellidos }} {{ asistencia.estudiante.nombres }}</div>
+                                        <small class="text-muted">Codigo {{ asistencia.estudiante.codigo }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">{{ asistencia.carga_academica.grupo }}</td>
+                            <td>{{ asistencia.carga_academica.asignatura.nombre }}</td>
+                            <td class="text-center">
+                                {% if asistencia.estado == 'P' %}
+                                    <span class="badge rounded-pill bg-success-subtle text-success-emphasis px-3 py-2">Presente</span>
+                                {% elif asistencia.estado == 'A' %}
+                                    <span class="badge rounded-pill bg-danger-subtle text-danger-emphasis px-3 py-2">Ausente</span>
+                                {% elif asistencia.estado == 'T' %}
+                                    <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2">Tarde</span>
+                                {% elif asistencia.estado == 'J' %}
+                                    <span class="badge rounded-pill bg-info-subtle text-info-emphasis px-3 py-2">Justificado</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ asistencia.observacion|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                                No hay asistencias registradas con esos filtros.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% include 'includes/compact_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_param='page' querystring=querystring %}
+        </div>
+    </div>
+</div>
+{% endblock %}

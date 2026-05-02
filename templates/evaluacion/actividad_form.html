@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">{{ titulo }}</h2>
+            <p class="text-muted mb-0">Define la actividad que despues recibira calificaciones por estudiante.</p>
+        </div>
+        <a href="{{ volver_url|default:'#' }}" class="btn btn-secondary">Volver</a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        Revisa los campos marcados antes de continuar.
+                    </div>
+                {% endif %}
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Carga academica</label>
+                        {{ form.carga_academica }}
+                        {{ form.carga_academica.errors }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Periodo</label>
+                        {{ form.periodo }}
+                        {{ form.periodo.errors }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Dimension</label>
+                        {{ form.dimension }}
+                        {{ form.dimension.errors }}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre de la actividad</label>
+                        {{ form.nombre }}
+                        {{ form.nombre.errors }}
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Porcentaje</label>
+                        {{ form.porcentaje }}
+                        {{ form.porcentaje.errors }}
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Fecha</label>
+                        {{ form.fecha }}
+                        {{ form.fecha.errors }}
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Estado</label>
+                        {{ form.activa }}
+                        {{ form.activa.errors }}
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    {% for clave, etiqueta in dimension_limites %}
+                    <div class="col-md-4">
+                        <div class="border rounded-4 p-3 h-100 bg-white">
+                            <small class="text-uppercase text-muted d-block mb-1">Dimension</small>
+                            <div class="fw-semibold">{{ etiqueta }}</div>
+                            <small class="text-muted d-block mt-1">Distribuye hasta 100% interno en esta dimension.</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">{{ boton }}</button>
+                    <a href="{{ volver_url|default:'#' }}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

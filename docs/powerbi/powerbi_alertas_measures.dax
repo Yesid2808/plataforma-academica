@@ -1,0 +1,87 @@
+// Medidas base para el tablero de alertas y riesgo estudiantil
+
+Estudiantes Con Alerta =
+CALCULATE(
+    DISTINCTCOUNT(vw_powerbi_riesgo_estudiante[estudiante_id]),
+    vw_powerbi_riesgo_estudiante[alertas_activas] > 0
+)
+
+Estudiantes Criticos =
+CALCULATE(
+    DISTINCTCOUNT(vw_powerbi_riesgo_estudiante[estudiante_id]),
+    vw_powerbi_riesgo_estudiante[nivel_riesgo_principal] = "CRITICO"
+)
+
+Estudiantes Riesgo =
+CALCULATE(
+    DISTINCTCOUNT(vw_powerbi_riesgo_estudiante[estudiante_id]),
+    vw_powerbi_riesgo_estudiante[nivel_riesgo_principal] = "RIESGO"
+)
+
+Estudiantes Atencion =
+CALCULATE(
+    DISTINCTCOUNT(vw_powerbi_riesgo_estudiante[estudiante_id]),
+    vw_powerbi_riesgo_estudiante[nivel_riesgo_principal] = "ATENCION"
+)
+
+Promedio General Dashboard =
+AVERAGE(vw_powerbi_riesgo_estudiante[promedio_general])
+
+Ausencias Promedio =
+AVERAGE(vw_powerbi_riesgo_estudiante[ausencias_distintas])
+
+Alertas Activas Totales =
+SUM(vw_powerbi_riesgo_estudiante[alertas_activas])
+
+Alertas Criticas Totales =
+SUM(vw_powerbi_riesgo_estudiante[alertas_criticas])
+
+Materias En Riesgo Totales =
+SUM(vw_powerbi_riesgo_estudiante[materias_en_riesgo])
+
+Indice Prioridad Promedio =
+AVERAGE(vw_powerbi_riesgo_estudiante[indice_prioridad])
+
+Seguimientos Abiertos =
+SUM(vw_powerbi_riesgo_estudiante[seguimientos_abiertos])
+
+Estudiantes Sin Seguimiento =
+CALCULATE(
+    DISTINCTCOUNT(vw_powerbi_riesgo_estudiante[estudiante_id]),
+    vw_powerbi_riesgo_estudiante[alertas_activas] > 0,
+    vw_powerbi_riesgo_estudiante[total_seguimientos] = 0
+)
+
+Top Prioridad =
+RANKX(
+    ALLSELECTED(vw_powerbi_riesgo_estudiante[estudiante_id]),
+    CALCULATE(MAX(vw_powerbi_riesgo_estudiante[indice_prioridad])),
+    ,
+    DESC
+)
+
+Alertas Activas Detalle =
+CALCULATE(
+    COUNTROWS(vw_powerbi_alertas_detalle),
+    vw_powerbi_alertas_detalle[estado] = "ACTIVA"
+)
+
+Alertas Sin Seguimiento =
+CALCULATE(
+    COUNTROWS(vw_powerbi_alertas_detalle),
+    vw_powerbi_alertas_detalle[estado] = "ACTIVA",
+    vw_powerbi_alertas_detalle[total_seguimientos] = 0
+)
+
+Alertas Con Seguimiento Abierto =
+CALCULATE(
+    COUNTROWS(vw_powerbi_alertas_detalle),
+    vw_powerbi_alertas_detalle[seguimientos_abiertos] > 0
+)
+
+Criticas Activas =
+CALCULATE(
+    COUNTROWS(vw_powerbi_alertas_detalle),
+    vw_powerbi_alertas_detalle[estado] = "ACTIVA",
+    vw_powerbi_alertas_detalle[nivel] = "CRITICO"
+)

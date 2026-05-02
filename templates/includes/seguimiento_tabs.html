@@ -1,0 +1,26 @@
+<div class="seguimiento-switcher mb-4">
+    <a
+        href="{% url 'lista_alertas' %}"
+        class="seguimiento-switcher-link {% if active_tab == 'alertas' %}active{% endif %}"
+    >
+        <span class="seguimiento-switcher-icon">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </span>
+        <span>
+            <strong>Alertas</strong>
+            <small>Deteccion y seguimiento</small>
+        </span>
+    </a>
+    <a
+        href="{% url 'gestion_reportes' %}"
+        class="seguimiento-switcher-link {% if active_tab == 'reportes' %}active{% endif %}"
+    >
+        <span class="seguimiento-switcher-icon">
+            <i class="bi bi-envelope-paper-fill"></i>
+        </span>
+        <span>
+            <strong>Reportes</strong>
+            <small>Comunicacion con acudientes</small>
+        </span>
+    </a>
+</div>

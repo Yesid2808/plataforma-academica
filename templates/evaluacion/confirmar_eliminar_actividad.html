@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar actividad{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h2 class="fw-bold mb-3">Eliminar actividad evaluativa</h2>
+            <p>
+                Vas a eliminar la actividad <strong>{{ actividad.nombre }}</strong> de
+                <strong>{{ actividad.carga_academica }}</strong>.
+            </p>
+            <p class="text-danger mb-4">
+                Esta accion tambien eliminara sus calificaciones asociadas.
+            </p>
+
+            <form method="post" class="d-flex gap-2">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Si, eliminar</button>
+                <a href="{% url 'lista_actividades' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

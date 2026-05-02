@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Reactivar estudiante{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <h3 class="mb-3">Reactivar estudiante</h3>
+        <p>
+            ¿Seguro que deseas reactivar a
+            <strong>{{ estudiante.nombres }} {{ estudiante.apellidos }}</strong>?
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Sí, reactivar</button>
+            <a href="{% url 'lista_estudiantes' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

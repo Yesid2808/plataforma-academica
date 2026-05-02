@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block title %}Alertas tempranas{% endblock %}
+{% block page_title %}Seguimiento academico{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">Controla alertas tempranas y conecta cada caso con la gestion de reportes a acudientes.</p>{% endblock %}
+{% block header_details %}
+<div class="app-header-details">
+    <span class="header-detail-chip">
+        <i class="bi bi-exclamation-circle"></i>
+        <span>Activas: <strong>{{ total_activas }}</strong></span>
+    </span>
+    <span class="header-detail-chip">
+        <i class="bi bi-envelope-check"></i>
+        <span>Reportes enviados: <strong>{{ total_reportes_enviados }}</strong></span>
+    </span>
+    <span class="header-detail-chip">
+        <i class="bi bi-people"></i>
+        <span>Estudiantes en seguimiento: <strong>{{ total_estudiantes_alerta }}</strong></span>
+    </span>
+</div>
+{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions header-module-actions-tight">
+    <a href="{% url 'gestion_reportes' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-envelope-paper-fill me-1"></i> Ir a reportes
+    </a>
+    <a href="{% url 'exportar_alertas_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    {% include 'includes/seguimiento_tabs.html' with active_tab='alertas' %}
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm dashboard-card h-100">
+                <div class="card-body">
+                    <div class="dashboard-icon bg-primary-subtle text-primary">
+                        <i class="bi bi-bell-fill"></i>
+                    </div>
+                    <h6 class="text-muted mt-3">Activas</h6>
+                    <h2 class="fw-bold mb-0">{{ total_activas }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm dashboard-card h-100">
+                <div class="card-body">
+                    <div class="dashboard-icon bg-warning-subtle text-warning">
+                        <i class="bi bi-eye-fill"></i>
+                    </div>
+                    <h6 class="text-muted mt-3">Revisadas</h6>
+                    <h2 class="fw-bold mb-0">{{ total_revisadas }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm dashboard-card h-100">
+                <div class="card-body">
+                    <div class="dashboard-icon bg-success-subtle text-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h6 class="text-muted mt-3">Cerradas</h6>
+                    <h2 class="fw-bold mb-0">{{ total_cerradas }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm dashboard-card h-100">
+                <div class="card-body">
+                    <div class="dashboard-icon bg-danger-subtle text-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <h6 class="text-muted mt-3">Criticas activas</h6>
+                    <h2 class="fw-bold mb-0">{{ total_criticas }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label fw-semibold">Buscar estudiante</label>
+                    <input type="text" name="busqueda" value="{{ busqueda }}" class="form-control" placeholder="Nombre, apellido, codigo o documento">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Tipo de alerta</label>
+                    <select name="tipo" class="form-select">
+                        <option value="">Todos</option>
+                        {% for tipo in tipos %}
+                            <option value="{{ tipo.id }}" {% if tipo_id == tipo.id|stringformat:"s" %}selected{% endif %}>{{ tipo.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Grado</label>
+                    <select name="grado" class="form-select">
+                        <option value="">Todos</option>
+                        {% for grado in grados %}
+                            <option value="{{ grado.id }}" {% if grado_id == grado.id|stringformat:"s" %}selected{% endif %}>{{ grado.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="ACTIVA" {% if estado == 'ACTIVA' %}selected{% endif %}>Activa</option>
+                        <option value="REVISADA" {% if estado == 'REVISADA' %}selected{% endif %}>Revisada</option>
+                        <option value="CERRADA" {% if estado == 'CERRADA' %}selected{% endif %}>Cerrada</option>
+                    </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Nivel</label>
+                    <select name="nivel" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="ATENCION" {% if nivel == 'ATENCION' %}selected{% endif %}>Atencion</option>
+                        <option value="RIESGO" {% if nivel == 'RIESGO' %}selected{% endif %}>Riesgo</option>
+                        <option value="CRITICO" {% if nivel == 'CRITICO' %}selected{% endif %}>Critico</option>
+                    </select>
+                </div>
+                <div class="col-lg-1 col-md-12">
+                    <div class="d-grid gap-2 filter-actions-compact">
+                        <button type="submit" class="btn btn-dark">Buscar</button>
+                        <a href="{% url 'lista_alertas' %}" class="btn btn-outline-secondary">Limpiar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if not filtro_aplicado %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-funnel fs-1 text-muted d-block mb-3"></i>
+            <h5 class="fw-bold">Usa los filtros para consultar alertas</h5>
+            <p class="text-muted mb-0">El sistema no carga todos los registros automaticamente para mantener una busqueda mas rapida y ordenada.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if filtro_aplicado %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h5 class="fw-bold mb-3">Resultados</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle custom-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Estudiante</th>
+                            <th class="text-center">Grado / Grupo</th>
+                            <th>Tipo</th>
+                            <th class="text-center">Nivel</th>
+                            <th>Descripcion</th>
+                            <th class="text-center">Fecha</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-center" style="width: 280px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for alerta in alertas %}
+                        <tr>
+                            <td>{{ alerta.estudiante.apellidos }} {{ alerta.estudiante.nombres }}</td>
+                            <td class="text-center">{{ alerta.estudiante.grupo }}</td>
+                            <td>{{ alerta.tipo_alerta.nombre }}</td>
+                            <td class="text-center">
+                                {% if alerta.nivel == 'CRITICO' %}
+                                    <span class="badge bg-dark">Critico</span>
+                                {% elif alerta.nivel == 'RIESGO' %}
+                                    <span class="badge bg-danger">Riesgo</span>
+                                {% elif alerta.nivel == 'ATENCION' %}
+                                    <span class="badge bg-warning text-dark">Atencion</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ alerta.nivel }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ alerta.descripcion }}</td>
+                            <td class="text-center">{{ alerta.fecha_generacion|date:"Y-m-d H:i" }}</td>
+                            <td class="text-center">
+                                {% if alerta.estado == 'ACTIVA' %}
+                                    <span class="badge bg-primary">Activa</span>
+                                {% elif alerta.estado == 'REVISADA' %}
+                                    <span class="badge bg-warning text-dark">Revisada</span>
+                                {% else %}
+                                    <span class="badge bg-success">Cerrada</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                    <a href="{% url 'detalle_alerta' alerta.id %}" class="btn btn-sm btn-info text-white" title="Ver detalle">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </a>
+                                    <a href="{% url 'gestion_reportes' %}?filtrar=1&busqueda={{ alerta.estudiante.codigo }}" class="btn btn-sm btn-outline-dark" title="Abrir reportes del estudiante">
+                                        <i class="bi bi-envelope-paper-fill"></i>
+                                    </a>
+                                    {% if alerta.estado == 'ACTIVA' %}
+                                        <form method="post" action="{% url 'cambiar_estado_alerta' alerta.id 'REVISADA' %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-warning" title="Marcar como revisada">
+                                                <i class="bi bi-check2-square"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    {% if alerta.estado != 'CERRADA' %}
+                                        <form method="post" action="{% url 'cambiar_estado_alerta' alerta.id 'CERRADA' %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success" title="Cerrar alerta">
+                                                <i class="bi bi-x-circle-fill"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    <a href="{% url 'detalle_estudiante' alerta.estudiante.id %}" class="btn btn-sm btn-primary" title="Ir al estudiante">
+                                        <i class="bi bi-person-fill"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-muted">No se encontraron alertas con esos filtros.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

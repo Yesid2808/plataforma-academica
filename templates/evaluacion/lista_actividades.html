@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+
+{% block title %}Calificaciones{% endblock %}
+{% block page_title %}Calificaciones{% endblock %}
+{% block header_subtitle %}
+<p class="app-header-subtitle">
+    Filtra tu curso, elige el periodo academico y administra las actividades antes de calificar.
+</p>
+{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions">
+    <a href="{% url 'resumen_calificaciones' %}" class="btn btn-outline-primary">
+        <i class="bi bi-bar-chart-fill me-1"></i> Resumen
+    </a>
+    {% if carga_seleccionada and periodo_seleccionado %}
+    <a href="{% url 'crear_actividad' %}?carga={{ carga_seleccionada.id }}&periodo={{ periodo_seleccionado.id }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle-fill me-1"></i> Nueva actividad
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                <div>
+                    <h2 class="fw-bold mb-1">1. Selecciona el curso</h2>
+                    <p class="text-muted mb-0">Al abrir el modulo veras primero este filtro para ubicar la carga academica que vas a trabajar.</p>
+                </div>
+            </div>
+
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-lg-9">
+                    <label class="form-label fw-semibold">Curso / asignatura</label>
+                    <select name="carga" class="form-select" onchange="this.form.submit()">
+                        <option value="">Selecciona un curso</option>
+                        {% for carga in cargas %}
+                            <option value="{{ carga.id }}" {% if carga_id == carga.id|stringformat:"s" %}selected{% endif %}>
+                                {{ carga.asignatura.nombre }} - {{ carga.grupo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-3 d-grid">
+                    <button type="submit" class="btn btn-dark">
+                        <i class="bi bi-search me-1"></i> Cargar curso
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if carga_seleccionada %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                <div>
+                    <h2 class="fw-bold mb-1">2. Escoge el periodo academico</h2>
+                    <p class="text-muted mb-0">Ahora selecciona el periodo para ver las actividades y comenzar a calificar.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for periodo in periodos %}
+                    <a
+                        href="{% url 'lista_actividades' %}?carga={{ carga_seleccionada.id }}&periodo={{ periodo.id }}"
+                        class="btn {% if periodo_seleccionado and periodo_seleccionado.id == periodo.id %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                    >
+                        Periodo {{ periodo.numero }}
+                    </a>
+                    {% empty %}
+                    <span class="text-muted">No hay periodos activos para esta carga.</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="border rounded-4 p-3 h-100 bg-white">
+                        <small class="text-uppercase text-muted d-block mb-1">Asignatura</small>
+                        <div class="fw-semibold">{{ carga_seleccionada.asignatura.nombre }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded-4 p-3 h-100 bg-white">
+                        <small class="text-uppercase text-muted d-block mb-1">Curso</small>
+                        <div class="fw-semibold">{{ carga_seleccionada.grupo }}</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="border rounded-4 p-3 h-100 bg-white">
+                        <small class="text-uppercase text-muted d-block mb-1">Ano lectivo</small>
+                        <div class="fw-semibold">{{ carga_seleccionada.anio_lectivo }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if carga_seleccionada and periodo_seleccionado %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <h2 class="fw-bold mb-1">3. Ubicacion actual</h2>
+                    <p class="text-muted mb-0">
+                        Estas en <strong>{{ carga_seleccionada.asignatura.nombre }}</strong>, curso <strong>{{ carga_seleccionada.grupo }}</strong>,
+                        <strong>Periodo {{ periodo_seleccionado.numero }}</strong> del ano lectivo <strong>{{ periodo_seleccionado.anio_lectivo }}</strong>.
+                    </p>
+                    <small class="text-muted">
+                        Rango del periodo: {{ periodo_seleccionado.fecha_inicio|date:"Y-m-d" }} al {{ periodo_seleccionado.fecha_fin|date:"Y-m-d" }}
+                    </small>
+                </div>
+                <a href="{% url 'crear_actividad' %}?carga={{ carga_seleccionada.id }}&periodo={{ periodo_seleccionado.id }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle-fill me-1"></i> Crear actividad
+                </a>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <div class="grade-overview-card">
+                        <small>Total de actividades</small>
+                        <strong>{{ total_actividades }}</strong>
+                        <span>Registradas en este periodo</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="grade-overview-card">
+                        <small>Avance global del periodo</small>
+                        <strong>{{ total_porcentaje|floatformat:2 }}%</strong>
+                        <span>Progreso real hacia la ponderacion completa</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="grade-overview-card">
+                        <small>Dimensiones cerradas</small>
+                        <strong>{{ total_dimensiones_completas }} / 3</strong>
+                        <span>Parcial, actividades y actitudinal</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-2">
+                {% for dimension in resumen_dimensiones %}
+                <div class="col-md-4">
+                    <div class="grade-overview-card">
+                        <small>{{ dimension.etiqueta }}</small>
+                        <strong>{{ dimension.acumulado|floatformat:2 }} / {{ dimension.objetivo|floatformat:2 }}%</strong>
+                        <span>Peso final {{ dimension.peso_dimension|floatformat:0 }}% - Disponible {{ dimension.disponible|floatformat:2 }}%</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                <div>
+                    <h2 class="fw-bold mb-1">Actividades del periodo</h2>
+                    <p class="text-muted mb-0">Cada periodo se organiza por dimensiones: Parcial 40%, Actividades 40% y Actitudinal 20%.</p>
+                </div>
+            </div>
+
+            {% for dimension in resumen_dimensiones %}
+            <div class="border rounded-4 p-3 mb-3 bg-white">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">{{ dimension.etiqueta }}</h5>
+                        <p class="text-muted mb-0">Distribucion interna {{ dimension.acumulado|floatformat:2 }}% de {{ dimension.objetivo|floatformat:2 }}%. Esta dimension pesa {{ dimension.peso_dimension|floatformat:0 }}% del periodo.</p>
+                    </div>
+                    <a href="{% url 'crear_actividad' %}?carga={{ carga_seleccionada.id }}&periodo={{ periodo_seleccionado.id }}&dimension={{ dimension.clave }}" class="btn btn-outline-primary">
+                        <i class="bi bi-plus-circle-fill me-1"></i> Agregar actividad
+                    </a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle custom-table mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 140px;">Peso interno %</th>
+                                <th>Nombre de la actividad</th>
+                                <th class="text-center" style="width: 180px;">Fecha</th>
+                                <th class="text-center" style="width: 260px;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for actividad in dimension.actividades %}
+                            <tr>
+                                <td class="text-center">
+                                    <span class="grade-dimension-pill">{{ actividad.porcentaje|floatformat:2 }}%</span>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ actividad.nombre }}</div>
+                                    <small class="text-muted d-block">Periodo {{ actividad.periodo.numero }} - {{ actividad.carga_academica.asignatura.nombre }} - {{ actividad.carga_academica.grupo }}</small>
+                                    <span class="table-inline-status">Lista para calificar</span>
+                                </td>
+                                <td class="text-center">{{ actividad.fecha|date:"Y-m-d" }}</td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                        <a href="{% url 'editar_actividad' actividad.id %}" class="btn btn-sm btn-outline-warning">
+                                            <i class="bi bi-pencil-square me-1"></i> Modificar
+                                        </a>
+                                        <a href="{% url 'registrar_calificaciones' actividad.id %}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-clipboard-check me-1"></i> Calificar
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    Aun no hay actividades registradas en esta dimension.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <div class="text-muted mb-3">Todavia no hay actividades creadas para este curso en el periodo seleccionado.</div>
+                <a href="{% url 'crear_actividad' %}?carga={{ carga_seleccionada.id }}&periodo={{ periodo_seleccionado.id }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle-fill me-1"></i> Crear la primera actividad
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% elif not carga_seleccionada %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <div class="mx-auto" style="max-width: 520px;">
+                <div class="display-6 mb-3 text-primary">
+                    <i class="bi bi-funnel-fill"></i>
+                </div>
+                <h2 class="fw-bold mb-2">Empieza filtrando el curso</h2>
+                <p class="text-muted mb-0">Selecciona una carga academica para habilitar el boton del periodo academico y mostrar la gestion de actividades.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

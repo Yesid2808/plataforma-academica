@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Estudiantes{% endblock %}
+{% block page_title %}Estudiantes{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">Consulta, filtra y gestiona la informacion de los estudiantes registrados.</p>{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions">
+    {% if can_manage_students %}
+    <a href="{% url 'importar_estudiantes' %}" class="btn btn-success">
+        <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar Excel
+    </a>
+    {% endif %}
+    <a href="{% url 'exportar_estudiantes_excel' %}{% if querystring %}?{{ querystring }}{% endif %}" class="btn btn-outline-success">
+        <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+    </a>
+    {% if can_manage_students %}
+    <a href="{% url 'crear_estudiante' %}" class="btn btn-primary">
+        <i class="bi bi-person-plus-fill me-1"></i> Nuevo estudiante
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <input type="hidden" name="filtrar" value="1">
+
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label fw-semibold">Buscar</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input
+                            type="text"
+                            name="busqueda"
+                            value="{{ busqueda }}"
+                            class="form-control"
+                            placeholder="Codigo, documento, nombres o apellidos"
+                        >
+                    </div>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Grado</label>
+                    <select name="grado" id="grado-filter" class="form-select">
+                        <option value="">Todos</option>
+                        {% for grado in grados %}
+                            <option value="{{ grado.id }}" {% if grado_id == grado.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grado.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Grupo</label>
+                    <select name="grupo" id="grupo-filter" class="form-select" data-selected="{{ grupo_id }}">
+                        <option value="">Todos</option>
+                        {% for grupo in grupos %}
+                            <option value="{{ grupo.id }}" data-grado="{{ grupo.grado_id }}" {% if grupo_id == grupo.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grupo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="activo" {% if estado == 'activo' %}selected{% endif %}>Activo</option>
+                        <option value="inactivo" {% if estado == 'inactivo' %}selected{% endif %}>Inactivo</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-12 student-filter-actions-col">
+                    <div class="filter-actions-compact filter-actions-short">
+                        <button type="submit" class="btn btn-dark" name="filtrar" value="1">
+                            <i class="bi bi-funnel-fill me-1"></i> Buscar
+                        </button>
+                        <a href="{% url 'lista_estudiantes' %}" class="btn btn-outline-secondary">
+                            Limpiar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm module-scroll-card">
+        <div class="card-body">
+            {% if filtros_aplicados %}
+                <div class="module-scroll-panel table-panel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">Foto</th>
+                                    <th class="text-center">Codigo</th>
+                                    <th class="text-center">Documento</th>
+                                    <th>Nombres</th>
+                                    <th>Apellidos</th>
+                                    <th class="text-center">Genero</th>
+                                    <th class="text-center">Grupo</th>
+                                    <th>Acudiente</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-center" style="width: 260px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for estudiante in page_obj %}
+                                <tr>
+                                    <td class="text-center">
+                                        {% if estudiante.foto %}
+                                            <img src="{{ estudiante.foto.url }}" alt="Foto de {{ estudiante.nombres }}" class="student-list-photo">
+                                        {% else %}
+                                            <div class="student-list-photo student-list-photo-placeholder mx-auto">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center fw-semibold">{{ estudiante.codigo }}</td>
+                                    <td class="text-center">{{ estudiante.documento }}</td>
+                                    <td>{{ estudiante.nombres }}</td>
+                                    <td>{{ estudiante.apellidos }}</td>
+                                    <td class="text-center">{{ estudiante.get_genero_display }}</td>
+                                    <td class="text-center">{{ estudiante.grupo }}</td>
+                                    <td>{{ estudiante.acudiente }}</td>
+                                    <td class="text-center">
+                                        {% if estudiante.activo %}
+                                            <span class="badge rounded-pill bg-success-subtle text-success-emphasis px-3 py-2">Activo</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis px-3 py-2">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                            <a href="{% url 'detalle_estudiante' estudiante.id %}?next={{ current_path|urlencode }}" class="btn btn-sm btn-info text-white" title="Ver detalle">
+                                                <i class="bi bi-eye-fill"></i>
+                                            </a>
+                                            {% if can_manage_students %}
+                                            <a href="{% url 'editar_estudiante' estudiante.id %}" class="btn btn-sm btn-warning" title="Editar">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                            {% endif %}
+                                            {% if estudiante.grupo.director_grupo and estudiante.grupo.director_grupo.telefono %}
+                                                <a href="https://wa.me/57{{ estudiante.grupo.director_grupo.telefono }}" target="_blank" class="btn btn-sm btn-success" title="Escribir al docente director">
+                                                    <i class="bi bi-whatsapp"></i>
+                                                </a>
+                                            {% endif %}
+                                            {% if can_manage_students %}
+                                            {% if estudiante.activo %}
+                                                <a href="{% url 'eliminar_estudiante' estudiante.id %}" class="btn btn-sm btn-danger" title="Inactivar">
+                                                    <i class="bi bi-person-x-fill"></i>
+                                                </a>
+                                            {% else %}
+                                                <a href="{% url 'reactivar_estudiante' estudiante.id %}" class="btn btn-sm btn-success" title="Reactivar">
+                                                    <i class="bi bi-person-check-fill"></i>
+                                                </a>
+                                            {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-4 text-muted">
+                                        <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                                        No se encontraron estudiantes con los filtros aplicados.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted module-scroll-panel-empty">
+                    <i class="bi bi-funnel fs-2 d-block mb-3"></i>
+                    <h5 class="fw-semibold text-dark">Aplica un filtro para consultar estudiantes</h5>
+                    <p class="mb-0">El modulo ya no carga toda la base de datos al abrir. Selecciona los criterios y presiona <strong>Filtrar</strong>.</p>
+                </div>
+            {% endif %}
+
+            {% if filtros_aplicados %}
+                {% include 'includes/compact_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_param=page_param querystring=querystring %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    const gradoFilter = document.getElementById('grado-filter');
+    const grupoFilter = document.getElementById('grupo-filter');
+    const grupos = [
+        {% for grupo in todos_grupos %}
+            {
+                id: '{{ grupo.id }}',
+                gradoId: '{{ grupo.grado_id }}',
+                label: '{{ grupo|escapejs }}'
+            }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function refreshGrupoOptions() {
+        const selectedGrado = gradoFilter.value;
+        const selectedGrupo = grupoFilter.dataset.selected || grupoFilter.value;
+        const gruposVisibles = selectedGrado
+            ? grupos.filter((grupo) => grupo.gradoId === selectedGrado)
+            : grupos;
+
+        grupoFilter.innerHTML = '<option value="">Todos</option>';
+        gruposVisibles.forEach((grupo) => {
+            const option = document.createElement('option');
+            option.value = grupo.id;
+            option.textContent = grupo.label;
+            option.dataset.grado = grupo.gradoId;
+            option.selected = grupo.id === selectedGrupo;
+            grupoFilter.appendChild(option);
+        });
+
+        if (!gruposVisibles.some((grupo) => grupo.id === selectedGrupo)) {
+            grupoFilter.value = '';
+            grupoFilter.dataset.selected = '';
+        }
+    }
+
+    gradoFilter.addEventListener('change', () => {
+        grupoFilter.dataset.selected = '';
+        refreshGrupoOptions();
+    });
+
+    refreshGrupoOptions();
+</script>
+{% endblock %}

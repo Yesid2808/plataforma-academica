@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingreso | Plataforma Académica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="login-page">
+    <div class="login-shell">
+        <div class="login-hero">
+            <div class="login-hero-card">
+                <span class="login-kicker">Proyecto institucional</span>
+                <h1>Gestión académica con analítica y alertas tempranas</h1>
+                <p>Centraliza asistencia, rendimiento, horarios, reportes a acudientes y seguimiento de riesgo académico en una experiencia clara y profesional.</p>
+                <div class="login-feature-list">
+                    <div><i class="bi bi-bar-chart-line-fill"></i> Tablero analitico y seguimiento por indicadores</div>
+                    <div><i class="bi bi-calendar3-week-fill"></i> Horarios consistentes por grupo y docente</div>
+                    <div><i class="bi bi-envelope-paper-fill"></i> Reportes detallados y trazabilidad de cambios</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-panel">
+            <div class="login-card">
+                <div class="login-brand">
+                    <div class="login-brand-icon">
+                        <i class="bi bi-mortarboard-fill"></i>
+                    </div>
+                    <div>
+                        <h2>Bienvenido</h2>
+                        <p>Ingresa con tu cuenta institucional</p>
+                    </div>
+                </div>
+
+                {% if mensaje %}
+                    <div class="alert alert-danger">{{ mensaje }}</div>
+                {% endif %}
+
+                <form method="post" class="login-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ next_url }}">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Usuario</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+                            <input type="text" name="username" value="{{ username }}" class="form-control" placeholder="Ej. coordinacion.academica" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                    <label class="form-label fw-semibold">Contraseña</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text"><i class="bi bi-shield-lock-fill"></i></span>
+                            <input type="password" name="password" id="password-field" class="form-control" placeholder="Tu contraseña" required>
+                            <button class="btn btn-outline-secondary" type="button" id="toggle-password" aria-label="Mostrar u ocultar contraseña">
+                                <i class="bi bi-eye-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 login-submit">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Ingresar al sistema
+                    </button>
+                </form>
+
+                <div class="login-footer-note">
+                    Acceso restringido a personal autorizado. Toda modificación queda registrada en la plataforma.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordField = document.getElementById('password-field');
+
+        if (togglePassword && passwordField) {
+            togglePassword.addEventListener('click', () => {
+                const isPassword = passwordField.type === 'password';
+                passwordField.type = isPassword ? 'text' : 'password';
+                togglePassword.innerHTML = isPassword
+                    ? '<i class="bi bi-eye-slash-fill"></i>'
+                    : '<i class="bi bi-eye-fill"></i>';
+            });
+        }
+    </script>
+</body>
+</html>

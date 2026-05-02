@@ -1,0 +1,54 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso denegado | Plataforma Academica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="login-page">
+    <div class="login-shell">
+        <div class="login-hero">
+            <div class="login-hero-card">
+                <span class="login-kicker">Seguridad de acceso</span>
+                <h1>No tienes permisos para ingresar a este modulo</h1>
+                <p>La plataforma protege la informacion academica segun el rol y el alcance del usuario autenticado.</p>
+                <div class="login-feature-list">
+                    <div><i class="bi bi-shield-lock-fill"></i> Permisos por rol y alcance institucional</div>
+                    <div><i class="bi bi-journal-check"></i> Trazabilidad de cambios y auditoria</div>
+                    <div><i class="bi bi-person-badge-fill"></i> Acceso diferenciado para docentes y administracion</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-panel">
+            <div class="login-card text-center">
+                <div class="login-brand justify-content-center">
+                    <div class="login-brand-icon">
+                        <i class="bi bi-slash-circle-fill"></i>
+                    </div>
+                </div>
+                <h2 class="mb-2">Acceso denegado</h2>
+                <p class="text-muted mb-4">Si consideras que deberias poder ver esta seccion, consulta con el administrador o coordinacion academica.</p>
+                <div class="d-grid gap-2">
+                    {% if request.user.is_authenticated %}
+                    <a href="{% url 'inicio' %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house-door-fill me-1"></i> Volver al dashboard
+                    </a>
+                    {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Ir al inicio de sesion
+                    </a>
+                    {% endif %}
+                    <button type="button" class="btn btn-outline-secondary btn-lg" onclick="history.back()">
+                        <i class="bi bi-arrow-left me-1"></i> Regresar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

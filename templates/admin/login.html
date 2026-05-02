@@ -1,0 +1,85 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/admin-custom.css' %}">
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} admin-login-page{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="admin-login-shell">
+    <section class="admin-login-hero">
+        <div class="admin-login-hero-card">
+            <span class="admin-login-kicker">Administracion segura</span>
+            <h1>Controla la plataforma con la misma identidad visual del sistema academico.</h1>
+            <p>
+                Desde este panel puedes administrar usuarios, catalogos, permisos y configuraciones
+                institucionales sin salir del ecosistema de la aplicacion.
+            </p>
+            <div class="admin-login-feature-list">
+                <div>Usuarios, roles y accesos centralizados</div>
+                <div>Gestion de datos academicos y seguimiento</div>
+                <div>Entorno visual alineado con la plataforma</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="admin-login-panel">
+        <div class="admin-login-card">
+            <div class="admin-login-brand">
+                <div class="admin-login-brand-icon">PA</div>
+                <div>
+                    <h2>Panel administrativo</h2>
+                    <p>Inicia sesion para continuar</p>
+                </div>
+            </div>
+
+            {% if form.errors and not form.non_field_errors %}
+            <p class="errornote">
+                Por favor corrige los datos ingresados e intenta nuevamente.
+            </p>
+            {% endif %}
+
+            {% if form.non_field_errors %}
+                {% for error in form.non_field_errors %}
+                <p class="errornote">{{ error }}</p>
+                {% endfor %}
+            {% endif %}
+
+            {% if user.is_authenticated %}
+            <p class="errornote">
+                Ya iniciaste sesion como este usuario, pero no tienes permisos para acceder a esta pagina.
+            </p>
+            {% endif %}
+
+            <form action="{{ app_path }}" method="post" id="login-form">
+                {% csrf_token %}
+                <div class="form-row">
+                    {{ form.username.label_tag }}
+                    {{ form.username }}
+                </div>
+                <div class="form-row">
+                    {{ form.password.label_tag }}
+                    {{ form.password }}
+                    <input type="hidden" name="next" value="{{ next }}">
+                </div>
+
+                {% url 'admin_password_reset' as password_reset_url %}
+                {% if password_reset_url %}
+                <div class="password-reset-link">
+                    <a href="{{ password_reset_url }}">Olvide mi contrasena</a>
+                </div>
+                {% endif %}
+
+                <div class="submit-row">
+                    <input type="submit" value="Ingresar al admin">
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}

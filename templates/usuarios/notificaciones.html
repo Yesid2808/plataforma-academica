@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Notificaciones{% endblock %}
+{% block page_title %}Notificaciones{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">Seguimiento de cambios realizados por docentes en asistencias y calificaciones.</p>{% endblock %}
+{% block header_details %}
+<div class="app-header-details">
+    <span class="header-detail-chip">
+        <i class="bi bi-inboxes-fill"></i>
+        <span>Total: <strong>{{ notificaciones|length }}</strong></span>
+    </span>
+    <span class="header-detail-chip">
+        <i class="bi bi-bell-fill"></i>
+        <span>Pendientes: <strong>{{ notificaciones_no_leidas }}</strong></span>
+    </span>
+</div>
+{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions">
+    <form method="post" action="{% url 'marcar_notificaciones_leidas' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-dark">
+            <i class="bi bi-check2-all me-1"></i> Marcar todas como leidas
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm module-scroll-card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1">Bandeja de actividad</h5>
+                    <p class="text-muted mb-0">Informacion compacta sobre el modulo afectado, el actor, la fecha, el estado y el detalle registrado.</p>
+                </div>
+            </div>
+
+            <div class="module-scroll-panel list-panel">
+                <div class="list-group list-group-flush">
+                    {% for notificacion in notificaciones %}
+                    <a href="{% url 'leer_notificacion' notificacion.id %}" class="list-group-item list-group-item-action border-0 border-bottom px-0 py-3 {% if not notificacion.leida %}bg-warning-subtle{% endif %}">
+                        <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-start gap-3 px-3">
+                            <div class="flex-grow-1">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                    {% if notificacion.tipo == 'ASISTENCIA' %}
+                                        <span class="badge text-bg-primary">Asistencia</span>
+                                    {% elif notificacion.tipo == 'CALIFICACION' %}
+                                        <span class="badge text-bg-success">Calificacion</span>
+                                    {% else %}
+                                        <span class="badge text-bg-secondary">Sistema</span>
+                                    {% endif %}
+
+                                    <span class="badge text-bg-light border">
+                                        {% if notificacion.actor %}
+                                            {{ notificacion.actor.get_full_name|default:notificacion.actor.username }}
+                                        {% else %}
+                                            Sistema
+                                        {% endif %}
+                                    </span>
+
+                                    <span class="badge text-bg-light border">{{ notificacion.fecha_creacion|date:"Y-m-d H:i" }}</span>
+
+                                    {% if notificacion.url %}
+                                        <span class="badge text-bg-light border">Con enlace</span>
+                                    {% else %}
+                                        <span class="badge text-bg-light border">Sin enlace</span>
+                                    {% endif %}
+                                </div>
+
+                                <div class="fw-semibold mb-1">{{ notificacion.titulo }}</div>
+                                <div class="small text-muted mb-2">Registro #{{ notificacion.id }}</div>
+                                <div>{{ notificacion.mensaje }}</div>
+                            </div>
+
+                            <div class="d-flex flex-column align-items-xl-end gap-2">
+                                {% if notificacion.leida %}
+                                    <span class="badge text-bg-secondary">Leida</span>
+                                {% else %}
+                                    <span class="badge text-bg-danger">Nueva</span>
+                                {% endif %}
+                                <span class="small text-muted">Abrir detalle</span>
+                            </div>
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">No hay notificaciones registradas para esta cuenta.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Horarios academicos{% endblock %}
+{% block page_title %}Horarios academicos{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">{% if estudiante_sesion %}Consulta el horario oficial de tu grupo por dia y bloque academico.{% else %}Consulta los bloques organizados por dia, grupo, asignatura y docente.{% endif %}</p>{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <span class="visually-hidden">Buscar horarios</span>
+            <form method="get" id="horarios-filter-form" class="row g-3 align-items-end">
+                <div class="col-lg-5 col-md-6">
+                    {% if estudiante_sesion %}
+                        <input type="hidden" name="grupo" value="{{ grupo_id }}">
+                        <input type="text" class="form-control" value="{{ estudiante_sesion.grupo }}" readonly>
+                    {% else %}
+                        <select name="grupo" id="horarios-grupo-filter" class="form-select">
+                            <option value="">Grupo</option>
+                            {% for grupo in grupos %}
+                                <option value="{{ grupo.id }}" {% if grupo_id == grupo.id|stringformat:"s" %}selected{% endif %}>{{ grupo }}</option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
+                <div class="col-lg-5 col-md-6">
+                    {% if estudiante_sesion %}
+                        <input type="text" class="form-control" value="Docentes de {{ estudiante_sesion.grupo }}" readonly>
+                    {% elif docente_sesion %}
+                        <input type="hidden" name="docente" value="{{ docente_id }}">
+                        <input type="text" class="form-control" value="{{ docente_sesion.get_full_name|default:docente_sesion.username }}" readonly>
+                    {% else %}
+                        <select name="docente" id="horarios-docente-filter" class="form-select">
+                            <option value="">Docente</option>
+                            {% for docente in docentes %}
+                                <option value="{{ docente.id }}" {% if docente_id == docente.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ docente.get_full_name|default:docente.username }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
+                <div class="col-lg-2 col-md-12 align-self-center">
+                    <div class="header-detail-chip py-1 px-2 d-inline-flex align-items-center ms-lg-2">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        <span>Bloques: <strong>{{ total_bloques }}</strong></span>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if cargas_sin_horario %}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle custom-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Asignatura</th>
+                            <th>Grupo</th>
+                            <th>Docente</th>
+                            <th>Ano</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for carga_pendiente in cargas_sin_horario %}
+                        <tr>
+                            <td>{{ carga_pendiente.asignatura.nombre }}</td>
+                            <td>{{ carga_pendiente.grupo }}</td>
+                            <td>{{ carga_pendiente.docente.get_full_name|default:carga_pendiente.docente.username }}</td>
+                            <td>{{ carga_pendiente.anio_lectivo.anio }}</td>
+                            <td class="text-center">
+                                <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2">Sin bloque</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% for fila in filas_horario %}
+    <div class="row g-4 mb-4">
+        {% for dia, bloques in fila %}
+        <div class="col-12 col-xl-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold mb-3">{{ dia }}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle custom-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Grupo</th>
+                                    <th>Asignatura</th>
+                                    <th>Docente</th>
+                                    <th>Aula</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for horario in bloques %}
+                                <tr>
+                                    <td>{{ horario.hora_inicio|time:"H:i" }} - {{ horario.hora_fin|time:"H:i" }}</td>
+                                    <td>{{ horario.carga_academica.grupo }}</td>
+                                    <td>{{ horario.carga_academica.asignatura.nombre }}</td>
+                                    <td>{{ horario.carga_academica.docente.get_full_name|default:horario.carga_academica.docente.username }}</td>
+                                    <td>{{ horario.aula|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% empty %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            No hay bloques horarios registrados para esos filtros.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    const horariosGrupoFilter = document.getElementById('horarios-grupo-filter');
+    const horariosDocenteFilter = document.getElementById('horarios-docente-filter');
+    const horariosFilterForm = document.getElementById('horarios-filter-form');
+
+    if (horariosGrupoFilter && horariosFilterForm) {
+        horariosGrupoFilter.addEventListener('change', () => {
+            horariosFilterForm.submit();
+        });
+    }
+
+    if (horariosDocenteFilter && horariosFilterForm) {
+        horariosDocenteFilter.addEventListener('change', () => {
+            horariosFilterForm.submit();
+        });
+    }
+</script>
+{% endblock %}

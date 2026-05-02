@@ -1,0 +1,222 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Plataforma Academica{% endblock %}</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260502-alert-detail">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="app-body">
+    {% with current_url=request.resolver_match.url_name %}
+    <div class="app-shell">
+        <aside class="app-sidebar" id="app-sidebar">
+            <div>
+                <div class="sidebar-brand">
+                    <div class="brand-icon">
+                        <i class="bi bi-mortarboard-fill"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0">Colegio App</h5>
+                        <small>Gestion academica inteligente</small>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <span class="sidebar-section-title">General</span>
+                    <a class="sidebar-link {% if current_url == 'inicio' %}active{% endif %}" href="{% url 'inicio' %}">
+                        <i class="bi bi-speedometer2"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a class="sidebar-link {% if current_url == 'horarios_academicos' %}active{% endif %}" href="{% url 'horarios_academicos' %}">
+                        <i class="bi bi-calendar3-week-fill"></i>
+                        <span>Horarios</span>
+                    </a>
+                    {% if user.rol != 'EST' %}
+                    <a class="sidebar-link {% if current_url == 'lista_notificaciones' %}active{% endif %}" href="{% url 'lista_notificaciones' %}">
+                        <i class="bi bi-bell-fill"></i>
+                        <span>Notificaciones</span>
+                        {% if notificaciones_no_leidas %}
+                            <span class="ms-auto badge rounded-pill text-bg-danger">{{ notificaciones_no_leidas }}</span>
+                        {% endif %}
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="sidebar-section">
+                    <span class="sidebar-section-title">Academico</span>
+                    {% if user.rol == 'EST' %}
+                    <a class="sidebar-link {% if current_url == 'detalle_estudiante' %}active{% endif %}" href="{% url 'mi_perfil_estudiante' %}">
+                        <i class="bi bi-person-vcard-fill"></i>
+                        <span>Mi perfil</span>
+                    </a>
+                    {% else %}
+                    <a class="sidebar-link {% if current_url == 'lista_estudiantes' or current_url == 'crear_estudiante' or current_url == 'editar_estudiante' or current_url == 'detalle_estudiante' %}active{% endif %}" href="{% url 'lista_estudiantes' %}">
+                        <i class="bi bi-people-fill"></i>
+                        <span>Estudiantes</span>
+                    </a>
+                    <a class="sidebar-link {% if current_url == 'registrar_asistencia' or current_url == 'resumen_asistencia' %}active{% endif %}" href="{% url 'registrar_asistencia' %}">
+                        <i class="bi bi-calendar-check-fill"></i>
+                        <span>Asistencias</span>
+                    </a>
+                    <a class="sidebar-link {% if current_url == 'lista_actividades' or current_url == 'crear_actividad' or current_url == 'editar_actividad' or current_url == 'registrar_calificaciones' or current_url == 'resumen_calificaciones' %}active{% endif %}" href="{% url 'lista_actividades' %}">
+                        <i class="bi bi-journal-check"></i>
+                        <span>Calificaciones</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="sidebar-section">
+                    <span class="sidebar-section-title">Seguimiento</span>
+                    <a class="sidebar-link {% if current_url == 'gestion_seguimiento' or current_url == 'gestion_reportes' or current_url == 'lista_alertas' or current_url == 'detalle_alerta' or current_url == 'reporte_estudiante' or current_url == 'mi_seguimiento_estudiante' %}active{% endif %}" href="{% if user.rol == 'EST' %}{% url 'mi_seguimiento_estudiante' %}{% else %}{% url 'gestion_seguimiento' %}{% endif %}">
+                        <i class="bi bi-activity"></i>
+                        <span>Seguimiento</span>
+                    </a>
+                </div>
+
+                {% if user.rol == 'ADMIN' or user.rol == 'COORD' or user.is_superuser %}
+                <div class="sidebar-section">
+                    <span class="sidebar-section-title">Administracion</span>
+                    <a class="sidebar-link {% if current_url == 'gestion_academica' or current_url == 'lista_catalogo' or current_url == 'crear_catalogo' or current_url == 'editar_catalogo' %}active{% endif %}" href="{% url 'gestion_academica' %}">
+                        <i class="bi bi-building-fill-gear"></i>
+                        <span>Catalogos</span>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="sidebar-footer"></div>
+        </aside>
+        <div class="app-mobile-backdrop" id="app-mobile-backdrop"></div>
+
+        <main class="app-main">
+            <header class="app-header">
+                <button
+                    type="button"
+                    class="mobile-nav-toggle"
+                    id="mobile-nav-toggle"
+                    aria-label="Abrir menu principal"
+                    aria-controls="app-sidebar"
+                    aria-expanded="false"
+                >
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="app-header-copy">
+                    <p class="text-muted mb-1 small">{% block header_kicker %}Plataforma academica{% endblock %}</p>
+                    <h1 class="h4 fw-bold mb-0">{% block page_title %}{% block header_title %}Panel principal{% endblock %}{% endblock %}</h1>
+                    {% block header_subtitle %}{% endblock %}
+                    {% block header_details %}{% endblock %}
+                </div>
+                <div class="header-actions">
+                    {% block header_actions %}{% endblock %}
+                    {% if user.rol != 'EST' %}
+                    <a href="{% url 'lista_notificaciones' %}" class="header-badge text-decoration-none">
+                        <i class="bi bi-bell-fill"></i>
+                        <span>{{ notificaciones_no_leidas }}</span>
+                    </a>
+                    {% endif %}
+                    <div class="dropdown">
+                        <button class="header-user-chip header-user-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Sesion activa">
+                            <div class="header-user-icon">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                            <div class="header-user-copy">
+                                <span class="header-user-name">{{ nombre_sesion }}</span>
+                                <small class="header-user-role">{{ user.get_rol_display }}</small>
+                            </div>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end header-user-menu border-0 shadow-sm">
+                            <div class="header-user-menu-head">
+                                <div class="header-user-menu-name">{{ nombre_sesion }}</div>
+                                <small class="header-user-menu-role">{{ user.get_rol_display }}</small>
+                            </div>
+                            {% if user.rol == 'ADMIN' or user.rol == 'COORD' or user.is_superuser %}
+                            <a class="dropdown-item" href="/admin/">
+                                <i class="bi bi-gear-fill"></i>
+                                <span>Admin Django</span>
+                            </a>
+                            {% endif %}
+                            <a class="dropdown-item" href="{% url 'password_change' %}">
+                                <i class="bi bi-shield-lock-fill"></i>
+                                <span>Cambiar contrasena</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <form method="post" action="{% url 'logout' %}" class="m-0">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    <span>Cerrar sesion</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <section class="app-content">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags|default:'success' }} alert-dismissible fade show custom-alert" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </section>
+        </main>
+    </div>
+    {% endwith %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (() => {
+            const body = document.body;
+            const toggle = document.getElementById('mobile-nav-toggle');
+            const backdrop = document.getElementById('app-mobile-backdrop');
+
+            if (!toggle || !backdrop) {
+                return;
+            }
+
+            const closeSidebar = () => {
+                body.classList.remove('mobile-sidebar-open');
+                toggle.setAttribute('aria-expanded', 'false');
+            };
+
+            const openSidebar = () => {
+                body.classList.add('mobile-sidebar-open');
+                toggle.setAttribute('aria-expanded', 'true');
+            };
+
+            toggle.addEventListener('click', () => {
+                if (body.classList.contains('mobile-sidebar-open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+
+            backdrop.addEventListener('click', closeSidebar);
+
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 991) {
+                    closeSidebar();
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeSidebar();
+                }
+            });
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

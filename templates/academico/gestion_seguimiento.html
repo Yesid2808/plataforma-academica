@@ -1,0 +1,470 @@
+{% extends 'base.html' %}
+
+{% block title %}Seguimiento academico{% endblock %}
+{% block page_title %}Seguimiento academico{% endblock %}
+{% block header_subtitle %}<p class="app-header-subtitle">Centraliza alertas tempranas, estado de reportes y acciones de comunicacion con acudientes en un solo modulo.</p>{% endblock %}
+{% block header_details %}
+<div class="app-header-details">
+    <span class="header-detail-chip">
+        <i class="bi bi-exclamation-triangle"></i>
+        <span>Alertas activas: <strong>{% if filtros_aplicados %}{{ alertas_activas_filtradas }}{% else %}{{ total_alertas_activas }}{% endif %}</strong></span>
+    </span>
+    <span class="header-detail-chip">
+        <i class="bi bi-envelope-check"></i>
+        <span>Reportes enviados: <strong>{{ total_reportes_enviados }}</strong></span>
+    </span>
+    <span class="header-detail-chip">
+        <i class="bi bi-clock-history"></i>
+        <span>Pendientes: <strong>{{ total_reportes_pendientes }}</strong></span>
+    </span>
+</div>
+{% endblock %}
+{% block header_actions %}
+<div class="header-module-actions header-module-actions-tight header-module-actions-seguimiento">
+    <button
+        type="button"
+        class="btn {% if estado_correo.configurado %}btn-success smtp-status-btn smtp-status-btn-ok{% else %}btn-warning smtp-status-btn smtp-status-btn-pending{% endif %}"
+        data-bs-toggle="modal"
+        data-bs-target="#smtpStatusModal"
+    >
+        <i class="bi bi-plug-fill me-1"></i> SMTP
+    </button>
+    <a href="{% url 'exportar_alertas_excel' %}?{{ querystring }}" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel me-1"></i> Exportar alertas
+    </a>
+    <form method="post" action="{% url 'enviar_reportes_masivos' %}?{{ querystring }}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary" {% if not con_correo or not filtros_aplicados %}disabled{% endif %}>
+            <i class="bi bi-send-fill me-1"></i> Enviar reportes
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <span class="visually-hidden">Modulo de reportes a acudientes</span>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="seguimiento-filter-form">
+                <input type="hidden" name="filtrar" value="1">
+
+                <div class="seguimiento-filter-grid">
+                    <div class="seguimiento-filter-field seguimiento-filter-search">
+                        <label class="form-label fw-semibold">Buscar</label>
+                        <input type="text" name="busqueda" value="{{ busqueda }}" class="form-control" placeholder="Estudiante, codigo, documento o acudiente">
+                    </div>
+
+                    <div class="seguimiento-filter-field">
+                        <label class="form-label fw-semibold">Grado</label>
+                        <select name="grado" id="grado-filter" class="form-select">
+                            <option value="">Todos</option>
+                            {% for grado in grados %}
+                                <option value="{{ grado.id }}" {% if grado_id == grado.id|stringformat:"s" %}selected{% endif %}>{{ grado.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="seguimiento-filter-field">
+                        <label class="form-label fw-semibold">Grupo</label>
+                        <select name="grupo" id="grupo-filter" class="form-select" data-selected="{{ grupo_id }}">
+                            <option value="">Todos</option>
+                            {% for grupo in grupos %}
+                                <option value="{{ grupo.id }}" data-grado="{{ grupo.grado_id }}" {% if grupo_id == grupo.id|stringformat:"s" %}selected{% endif %}>{{ grupo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="seguimiento-filter-field">
+                        <label class="form-label fw-semibold">Periodo reporte</label>
+                        <select name="periodo" class="form-select" id="periodo-reporte-select">
+                            <option value="semanal" {% if periodo == 'semanal' %}selected{% endif %}>Semanal</option>
+                            <option value="mensual" {% if periodo == 'mensual' %}selected{% endif %}>Mensual</option>
+                        </select>
+                    </div>
+
+                    <div class="seguimiento-filter-field seguimiento-filter-range weekly-range-field">
+                        <label class="form-label fw-semibold">Rango semanal</label>
+                        <div class="seguimiento-range-inline">
+                            <div>
+                                <label class="form-label">Desde</label>
+                                <input type="date" name="fecha_inicio" class="form-control" value="{% if fecha_inicio %}{{ fecha_inicio|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            <div>
+                                <label class="form-label">Hasta</label>
+                                <input type="date" name="fecha_fin" class="form-control" value="{% if fecha_fin %}{{ fecha_fin|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="seguimiento-filter-field">
+                        <label class="form-label fw-semibold">Estado reporte</label>
+                        <select name="estado" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="pendiente" {% if estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                            <option value="enviado" {% if estado == 'enviado' %}selected{% endif %}>Enviado</option>
+                        </select>
+                    </div>
+
+                    <div class="seguimiento-filter-field">
+                        <label class="form-label fw-semibold">Estado alerta</label>
+                        <select name="estado_alerta" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="ACTIVA" {% if estado_alerta == 'ACTIVA' %}selected{% endif %}>Activa</option>
+                            <option value="REVISADA" {% if estado_alerta == 'REVISADA' %}selected{% endif %}>Revisada</option>
+                            <option value="CERRADA" {% if estado_alerta == 'CERRADA' %}selected{% endif %}>Cerrada</option>
+                        </select>
+                    </div>
+
+                    <div class="seguimiento-filter-field">
+                        <label class="form-label fw-semibold">Nivel alerta</label>
+                        <select name="nivel_alerta" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="ATENCION" {% if nivel_alerta == 'ATENCION' %}selected{% endif %}>Atencion</option>
+                            <option value="RIESGO" {% if nivel_alerta == 'RIESGO' %}selected{% endif %}>Riesgo</option>
+                            <option value="CRITICO" {% if nivel_alerta == 'CRITICO' %}selected{% endif %}>Critico</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="seguimiento-filter-footer">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="header-detail-chip">
+                                <i class="bi bi-people"></i>
+                                <span>Estudiantes: <strong>{% if filtros_aplicados %}{{ total_estudiantes }}{% else %}0{% endif %}</strong></span>
+                            </span>
+                            <span class="header-detail-chip">
+                                <i class="bi bi-bell"></i>
+                                <span>Alertas filtradas: <strong>{% if filtros_aplicados %}{{ alertas_filtradas }}{% else %}0{% endif %}</strong></span>
+                            </span>
+                            <span class="header-detail-chip">
+                                <i class="bi bi-exclamation-circle"></i>
+                                <span>Criticas: <strong>{% if filtros_aplicados %}{{ alertas_criticas_filtradas }}{% else %}0{% endif %}</strong></span>
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="submit" class="btn btn-dark">Buscar</button>
+                            <a href="{% url 'gestion_seguimiento' %}" class="btn btn-outline-secondary">Limpiar</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if filtros_aplicados %}
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm module-scroll-card">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">Gestion de reportes por estudiante</h5>
+                            <p class="text-muted mb-0 small">Visualiza si el acudiente ya recibio el reporte y cuantas alertas activas tiene cada estudiante.</p>
+                        </div>
+                        <div class="pagination-compact-summary">
+                            <span>Con correo</span>
+                            <strong>{{ con_correo }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="module-scroll-panel table-panel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle custom-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Estudiante</th>
+                                        <th class="text-center">Grupo</th>
+                                        <th>Acudiente</th>
+                                        <th>Correo acudiente</th>
+                                        <th class="text-center">Reporte</th>
+                                        <th class="text-center">Alertas</th>
+                                        <th class="text-center">Criticas</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for estudiante in page_obj %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">{{ estudiante.apellidos }} {{ estudiante.nombres }}</div>
+                                            <small class="text-muted">{{ estudiante.codigo }}</small>
+                                        </td>
+                                        <td class="text-center">{{ estudiante.grupo }}</td>
+                                        <td>{{ estudiante.acudiente }}</td>
+                                        <td>
+                                            {% if estudiante.correo_acudiente %}
+                                                {{ estudiante.correo_acudiente }}
+                                            {% else %}
+                                                <span class="text-muted">No registrado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if estudiante.tiene_reporte_enviado %}
+                                                <span class="badge rounded-pill bg-success-subtle text-success-emphasis px-3 py-2">Enviado</span>
+                                            {% else %}
+                                                <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis px-3 py-2">Pendiente</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge rounded-pill text-bg-light border px-3 py-2">{{ estudiante.total_alertas_activas }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge rounded-pill {% if estudiante.total_alertas_criticas %}text-bg-danger{% else %}text-bg-light border text-dark{% endif %} px-3 py-2">{{ estudiante.total_alertas_criticas }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                                <a href="{% url 'reporte_estudiante' estudiante.id %}?periodo={{ periodo }}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}{% endif %}" class="btn btn-sm btn-info text-white" title="Ver reporte">
+                                                    <i class="bi bi-eye-fill"></i>
+                                                </a>
+                                                <a href="{% url 'descargar_reporte_estudiante' estudiante.id periodo %}?{% if fecha_inicio %}fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}{% endif %}{% if fecha_inicio and fecha_fin %}&{% endif %}{% if fecha_fin %}fecha_fin={{ fecha_fin|date:'Y-m-d' }}{% endif %}" class="btn btn-sm btn-success" title="Descargar reporte">
+                                                    <i class="bi bi-file-earmark-excel"></i>
+                                                </a>
+                                                <a href="{% url 'enviar_reporte_estudiante' estudiante.id periodo %}?{% if fecha_inicio %}fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}{% endif %}{% if fecha_inicio and fecha_fin %}&{% endif %}{% if fecha_fin %}fecha_fin={{ fecha_fin|date:'Y-m-d' }}{% endif %}" class="btn btn-sm btn-primary {% if not estudiante.correo_acudiente %}disabled{% endif %}" title="Enviar al acudiente">
+                                                    <i class="bi bi-envelope-fill"></i>
+                                                </a>
+                                                <a href="{% url 'detalle_estudiante' estudiante.id %}" class="btn btn-sm btn-outline-dark" title="Ver estudiante">
+                                                    <i class="bi bi-person-fill"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4 text-muted">No se encontraron estudiantes con esos filtros.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {% include 'includes/compact_pagination.html' with page_obj=page_obj page_numbers=page_numbers page_param=page_param querystring=querystring %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12" id="alertas-listado">
+            <div class="card border-0 shadow-sm module-scroll-card">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-1">Alertas tempranas del conjunto filtrado</h5>
+                            <p class="text-muted mb-0 small">Gestiona las alertas detectadas dentro del mismo flujo de seguimiento y envio de reportes.</p>
+                        </div>
+                        <div class="pagination-compact-summary">
+                            <span>Total alertas</span>
+                            <strong>{{ alertas_filtradas }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="module-scroll-panel table-panel">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle custom-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Estudiante</th>
+                                        <th class="text-center">Grupo</th>
+                                        <th>Tipo</th>
+                                        <th class="text-center">Nivel</th>
+                                        <th class="text-center">Estado</th>
+                                        <th class="text-center">Fecha</th>
+                                        <th>Descripcion</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alerta in alerta_page_obj %}
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold">{{ alerta.estudiante.apellidos }} {{ alerta.estudiante.nombres }}</div>
+                                            <small class="text-muted">{{ alerta.estudiante.codigo }}</small>
+                                        </td>
+                                        <td class="text-center">{{ alerta.estudiante.grupo }}</td>
+                                        <td>{{ alerta.tipo_alerta.nombre|default:"Sin tipo" }}</td>
+                                        <td class="text-center">
+                                            {% if alerta.nivel == 'CRITICO' %}
+                                                <span class="badge bg-dark">Critico</span>
+                                            {% elif alerta.nivel == 'RIESGO' %}
+                                                <span class="badge bg-danger">Riesgo</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">Atencion</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if alerta.estado == 'ACTIVA' %}
+                                                <span class="badge bg-primary">Activa</span>
+                                            {% elif alerta.estado == 'REVISADA' %}
+                                                <span class="badge bg-warning text-dark">Revisada</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Cerrada</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">{{ alerta.fecha_generacion|date:"Y-m-d H:i" }}</td>
+                                        <td>{{ alerta.descripcion }}</td>
+                                        <td class="text-center">
+                                            <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                                <a href="{% url 'detalle_alerta' alerta.id %}" class="btn btn-sm btn-info text-white" title="Ver seguimiento">
+                                                    <i class="bi bi-eye-fill"></i>
+                                                </a>
+                                                {% if alerta.estado == 'ACTIVA' %}
+                                                    <form method="post" action="{% url 'cambiar_estado_alerta' alerta.id 'REVISADA' %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-warning" title="Marcar como revisada">
+                                                            <i class="bi bi-check2-square"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                {% if alerta.estado != 'CERRADA' %}
+                                                    <form method="post" action="{% url 'cambiar_estado_alerta' alerta.id 'CERRADA' %}" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-success" title="Cerrar alerta">
+                                                            <i class="bi bi-x-circle-fill"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                <a href="{% url 'reporte_estudiante' alerta.estudiante.id %}?periodo={{ periodo }}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio|date:'Y-m-d' }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin|date:'Y-m-d' }}{% endif %}" class="btn btn-sm btn-outline-dark" title="Abrir reporte del estudiante">
+                                                    <i class="bi bi-envelope-paper-fill"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4 text-muted">No se encontraron alertas con esos filtros.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {% include 'includes/compact_pagination.html' with page_obj=alerta_page_obj page_numbers=alerta_page_numbers page_param=alerta_page_param querystring=querystring %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-funnel fs-2 d-block mb-3 text-muted"></i>
+            <h5 class="fw-semibold text-dark">Aplica filtros para consultar seguimiento academico</h5>
+            <p class="mb-0 text-muted">Este modulo fusiona reportes y alertas en una sola vista operativa. Realiza una busqueda para cargar la informacion.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="smtpStatusModal" tabindex="-1" aria-labelledby="smtpStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+                <div>
+                    <span class="visually-hidden">Estado del correo</span>
+                    <h5 class="modal-title fw-bold" id="smtpStatusModalLabel">Estado de conexion SMTP</h5>
+                    <p class="text-muted mb-0 small">Resumen del servicio de correo configurado para el envio de reportes.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    {% if estado_correo.configurado %}
+                        <span class="badge text-bg-success">Configurado</span>
+                    {% else %}
+                        <span class="badge text-bg-warning">Pendiente</span>
+                    {% endif %}
+                    <span class="badge text-bg-light border text-dark">Backend: {{ estado_correo.backend }}</span>
+                </div>
+
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Estado general</div>
+                    <div class="fw-semibold">{{ estado_correo.mensaje }}</div>
+                </div>
+
+                <div class="rounded-4 border bg-light p-3">
+                    <div class="small text-muted mb-2">Detalle tecnico</div>
+                    <div class="small text-break">
+                        {% if estado_correo.configurado %}
+                            La configuracion SMTP esta lista para usarse desde este modulo.
+                        {% else %}
+                            El sistema aun no tiene una configuracion completa para enviar correos. Revisa las credenciales y vuelve a probar la conexion.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <form method="post" action="{% url 'probar_correo_reportes' %}" class="m-0">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-dark">
+                        <i class="bi bi-plug-fill me-1"></i> Probar conexion SMTP
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    const gradoFilter = document.getElementById('grado-filter');
+    const grupoFilter = document.getElementById('grupo-filter');
+    const grupos = [
+        {% for grupo in todos_grupos %}
+            {
+                id: '{{ grupo.id }}',
+                gradoId: '{{ grupo.grado_id }}',
+                label: '{{ grupo|escapejs }}'
+            }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function refreshGrupoOptions() {
+        const selectedGrado = gradoFilter.value;
+        const selectedGrupo = grupoFilter.dataset.selected || grupoFilter.value;
+        const gruposVisibles = selectedGrado
+            ? grupos.filter((grupo) => grupo.gradoId === selectedGrado)
+            : grupos;
+
+        grupoFilter.innerHTML = '<option value="">Todos</option>';
+        gruposVisibles.forEach((grupo) => {
+            const option = document.createElement('option');
+            option.value = grupo.id;
+            option.textContent = grupo.label;
+            option.selected = grupo.id === selectedGrupo;
+            grupoFilter.appendChild(option);
+        });
+
+        if (!gruposVisibles.some((grupo) => grupo.id === selectedGrupo)) {
+            grupoFilter.value = '';
+            grupoFilter.dataset.selected = '';
+        }
+    }
+
+    if (gradoFilter && grupoFilter) {
+        gradoFilter.addEventListener('change', () => {
+            grupoFilter.dataset.selected = '';
+            refreshGrupoOptions();
+        });
+        refreshGrupoOptions();
+    }
+
+    const periodoSelect = document.getElementById('periodo-reporte-select');
+    const weeklyFields = document.querySelectorAll('.weekly-range-field');
+
+    function toggleWeeklyFields() {
+        const visible = !periodoSelect || periodoSelect.value === 'semanal';
+        weeklyFields.forEach((field) => {
+            field.style.display = visible ? '' : 'none';
+        });
+    }
+
+    if (periodoSelect) {
+        periodoSelect.addEventListener('change', toggleWeeklyFields);
+        toggleWeeklyFields();
+    }
+</script>
+{% endblock %}

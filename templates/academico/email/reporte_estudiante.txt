@@ -1,0 +1,41 @@
+Hola {{ destinatario_nombre }},
+
+Compartimos el reporte {{ periodo_label|lower }} del estudiante {{ estudiante.nombres }} {{ estudiante.apellidos }}.
+
+Periodo analizado: {{ fecha_inicio|date:"Y-m-d" }} a {{ fecha_fin|date:"Y-m-d" }}
+Grupo: {{ estudiante.grupo }}
+
+Resumen general:
+- Asistencia: {{ resumen.porcentaje_asistencia }}%
+- Registros de asistencia: {{ resumen.total_registros }}
+- Promedio de notas: {{ resumen.promedio_simple }}
+- Notas menores a 3.0: {{ resumen.notas_bajas }}
+- Alertas en el periodo: {{ resumen.alertas_periodo }}
+- Alertas activas: {{ resumen.alertas_activas }}
+
+Seguimiento diario por materia:
+{% if seguimiento_destacado %}
+{% for dia in seguimiento_destacado %}
+
+{{ dia.fecha|date:"Y-m-d" }} ({{ dia.total_materias }} materias):
+{% if dia.materias %}{% for materia in dia.materias %}
+- {{ materia.asignatura }}
+  Asistencia: {% if materia.asistencia %}{{ materia.asistencia.get_estado_display }}{% else %}Sin registro{% endif %}
+{% if materia.asistencia and materia.asistencia.observacion %}  Observacion: {{ materia.asistencia.observacion }}
+{% endif %}{% if materia.calificaciones %}{% for calificacion in materia.calificaciones %}
+  Actividad: {{ calificacion.actividad.nombre }}
+  Periodo: {{ calificacion.actividad.periodo }} | Peso: {{ calificacion.actividad.porcentaje }}% | Nota: {{ calificacion.nota }}
+{% if calificacion.observacion %}  Observacion nota: {{ calificacion.observacion }}
+{% endif %}{% endfor %}{% else %}  Sin notas registradas en esta fecha.
+{% endif %}
+{% endfor %}{% else %}
+- No se registraron asistencias ni calificaciones para este dia habil.
+{% endif %}
+{% endfor %}
+{% else %}
+No se registraron asistencias ni calificaciones en el periodo consultado.
+{% endif %}
+
+En el archivo Excel adjunto encontraras el consolidado completo con horario academico, asistencias, calificaciones, alertas y una hoja adicional de seguimiento diario.
+
+Este mensaje fue generado automaticamente por la Plataforma Academica.

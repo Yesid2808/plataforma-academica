@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+
+{% block title %}Resumen de asistencia{% endblock %}
+{% block page_title %}Resumen de asistencia{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div>
+                <h2 class="mb-1 fw-bold">{% if user.rol == 'EST' %}Mi resumen de asistencia{% else %}Resumen de asistencia por estudiante{% endif %}</h2>
+                <p class="text-muted mb-0">{% if user.rol == 'EST' %}Consulta tus registros de asistencia y revisa tu nivel de alerta actual.{% else %}Consulta asistencia, exporta evidencias y detecta posibles alertas tempranas.{% endif %}</p>
+            </div>
+
+            {% if user.rol != 'EST' %}
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'exportar_resumen_asistencia_excel' %}{% if querystring %}?{{ querystring }}{% endif %}" class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+                </a>
+                <a href="{% url 'registrar_asistencia' %}" class="btn btn-primary">
+                    <i class="bi bi-calendar-check-fill me-1"></i> Registrar asistencia
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if user.rol != 'EST' %}
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Asistencia general</h6>
+                    <h2 class="fw-bold mb-0">{{ totales.porcentaje_asistencia }}%</h2>
+                    <small class="text-muted">{{ totales.registros }} registros filtrados</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Presentes</h6>
+                    <h2 class="fw-bold text-success mb-0">{{ totales.presentes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Ausentes</h6>
+                    <h2 class="fw-bold text-danger mb-0">{{ totales.ausentes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Tardes / Justificadas</h6>
+                    <h2 class="fw-bold mb-0">{{ totales.tardes }} / {{ totales.justificadas }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-lg-4 col-md-6">
+                    <label class="form-label fw-semibold">Buscar estudiante</label>
+                    <input type="text" name="busqueda" value="{{ busqueda }}" class="form-control"
+                           placeholder="Código, documento, nombres o apellidos">
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-semibold">Grado</label>
+                    <select name="grado" id="grado-filter" class="form-select">
+                        <option value="">Todos</option>
+                        {% for grado in grados %}
+                            <option value="{{ grado.id }}" {% if grado_id == grado.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grado.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label fw-semibold">Grupo</label>
+                    <select name="grupo" id="grupo-filter" class="form-select" data-selected="{{ grupo_id }}">
+                        <option value="">Todos</option>
+                        {% for grupo in grupos %}
+                            <option value="{{ grupo.id }}" data-grado="{{ grupo.grado_id }}" {% if grupo_id == grupo.id|stringformat:"s" %}selected{% endif %}>
+                                {{ grupo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="d-grid gap-2 filter-actions-compact">
+                        <button type="submit" class="btn btn-dark">
+                        <i class="bi bi-funnel-fill me-1"></i> Buscar
+                        </button>
+                        <a href="{% url 'resumen_asistencia' %}" class="btn btn-outline-secondary">Limpiar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle custom-table mb-0">
+                    <thead>
+                        <tr>
+                                <th class="text-center">Código</th>
+                            <th>Estudiante</th>
+                            <th class="text-center">Grupo</th>
+                            <th class="text-center">Presentes</th>
+                            <th class="text-center">Ausentes</th>
+                            <th class="text-center">Tardes</th>
+                            <th class="text-center">Justificadas</th>
+                            <th class="text-center">Porcentaje</th>
+                            <th class="text-center">Alerta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for estudiante in resumen %}
+                        <tr>
+                            <td class="text-center fw-semibold">{{ estudiante.codigo }}</td>
+                            <td>{{ estudiante.apellidos }} {{ estudiante.nombres }}</td>
+                            <td class="text-center">{{ estudiante.grupo }}</td>
+                            <td class="text-center">{{ estudiante.total_presentes }}</td>
+                            <td class="text-center">{{ estudiante.total_ausentes }}</td>
+                            <td class="text-center">{{ estudiante.total_tardes }}</td>
+                            <td class="text-center">{{ estudiante.total_justificadas }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-primary-subtle text-primary-emphasis px-3 py-2">
+                                    {{ estudiante.porcentaje_asistencia }}%
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if estudiante.nivel_riesgo == 'CRITICO' %}
+                                    <span class="badge bg-dark">Crítico</span>
+                                {% elif estudiante.nivel_riesgo == 'RIESGO' %}
+                                    <span class="badge bg-danger">Riesgo</span>
+                                {% elif estudiante.nivel_riesgo == 'ATENCION' %}
+                                    <span class="badge bg-warning text-dark">Atención</span>
+                                {% else %}
+                                    <span class="badge bg-success">Normal</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4 text-muted">
+                                No hay información de asistencia para mostrar.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script>
+    const gradoFilter = document.getElementById('grado-filter');
+    const grupoFilter = document.getElementById('grupo-filter');
+    const grupos = [
+        {% for grupo in todos_grupos %}
+            {
+                id: '{{ grupo.id }}',
+                gradoId: '{{ grupo.grado_id }}',
+                label: '{{ grupo|escapejs }}'
+            }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function refreshGrupoOptions() {
+        const selectedGrado = gradoFilter.value;
+        const selectedGrupo = grupoFilter.dataset.selected || grupoFilter.value;
+        const gruposVisibles = selectedGrado
+            ? grupos.filter((grupo) => grupo.gradoId === selectedGrado)
+            : grupos;
+
+        grupoFilter.innerHTML = '<option value="">Todos</option>';
+        gruposVisibles.forEach((grupo) => {
+            const option = document.createElement('option');
+            option.value = grupo.id;
+            option.textContent = grupo.label;
+            option.dataset.grado = grupo.gradoId;
+            option.selected = grupo.id === selectedGrupo;
+            grupoFilter.appendChild(option);
+        });
+
+        if (!gruposVisibles.some((grupo) => grupo.id === selectedGrupo)) {
+            grupoFilter.value = '';
+            grupoFilter.dataset.selected = '';
+        }
+    }
+
+    gradoFilter.addEventListener('change', () => {
+        grupoFilter.dataset.selected = '';
+        refreshGrupoOptions();
+    });
+    refreshGrupoOptions();
+</script>
+{% endblock %}
