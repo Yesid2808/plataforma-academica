@@ -205,6 +205,7 @@ LOGIN_LOCK_MINUTES = config('LOGIN_LOCK_MINUTES', default=10, cast=int)
 
 POWERBI_DASHBOARD_URL = config('POWERBI_DASHBOARD_URL', default='')
 
+EMAIL_TRANSPORT = config('EMAIL_TRANSPORT', default='smtp')
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = config('EMAIL_HOST', default='')
 EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
@@ -214,3 +215,5 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@plataformaacademica.local')
+BREVO_API_KEY = config('BREVO_API_KEY', default='')
+BREVO_API_URL = config('BREVO_API_URL', default='https://api.brevo.com/v3/smtp/email')

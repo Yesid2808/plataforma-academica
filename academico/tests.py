@@ -1,5 +1,6 @@
 from datetime import date, time
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -397,6 +398,27 @@ class AcademicoReportesTests(TestCase):
         self.assertEqual(
             ReporteAcudiente.objects.filter(estudiante=self.estudiante, estado='ENVIADO').count(),
             1
+        )
+
+    @override_settings(
+        EMAIL_TRANSPORT='brevo_api',
+        BREVO_API_KEY='fake-api-key',
+        DEFAULT_FROM_EMAIL='Plataforma Academica <academica.plataformaa@gmail.com>',
+    )
+    @patch('academico.reportes.urllib_request.urlopen')
+    def test_enviar_reporte_estudiante_por_brevo_api(self, mock_urlopen):
+        response_mock = MagicMock()
+        response_mock.__enter__.return_value = response_mock
+        response_mock.__exit__.return_value = False
+        response_mock.status = 201
+        mock_urlopen.return_value = response_mock
+
+        response = self.client.get(f'/academico/estudiantes/{self.estudiante.id}/reporte/semanal/enviar/')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(mock_urlopen.called)
+        self.assertTrue(
+            ReporteAcudiente.objects.filter(estudiante=self.estudiante, estado='ENVIADO').exists()
         )
 
     def test_horarios_academicos_renderiza(self):

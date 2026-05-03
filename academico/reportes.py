@@ -1,6 +1,10 @@
 from collections import OrderedDict
+import base64
 from datetime import datetime, timedelta
+import json
 from io import BytesIO
+from urllib import request as urllib_request
+from urllib.error import HTTPError, URLError
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
@@ -27,6 +31,68 @@ PERIODOS_REPORTE = {
         'dias': 29,
     },
 }
+
+
+def _usa_brevo_api():
+    return getattr(settings, 'EMAIL_TRANSPORT', 'smtp') == 'brevo_api' and bool(getattr(settings, 'BREVO_API_KEY', ''))
+
+
+def _parsear_remitente(valor):
+    valor = (valor or '').strip()
+    if '<' in valor and '>' in valor:
+        nombre, correo = valor.split('<', 1)
+        return nombre.strip().strip('"'), correo.replace('>', '').strip()
+    return '', valor
+
+
+def _enviar_correo_brevo_api(*, asunto, cuerpo_texto, cuerpo_html, destinatario, nombre_destinatario, nombre_archivo, contenido):
+    remitente_nombre, remitente_correo = _parsear_remitente(settings.DEFAULT_FROM_EMAIL)
+    if not remitente_correo:
+        raise ValueError('DEFAULT_FROM_EMAIL no esta configurado correctamente para Brevo API.')
+
+    payload = {
+        'sender': {
+            'name': remitente_nombre or 'Plataforma Academica',
+            'email': remitente_correo,
+        },
+        'to': [
+            {
+                'email': destinatario,
+                'name': nombre_destinatario or destinatario,
+            }
+        ],
+        'subject': asunto,
+        'htmlContent': cuerpo_html,
+        'textContent': cuerpo_texto,
+        'attachment': [
+            {
+                'name': nombre_archivo,
+                'content': base64.b64encode(contenido).decode('ascii'),
+            }
+        ],
+    }
+
+    req = urllib_request.Request(
+        settings.BREVO_API_URL,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            'accept': 'application/json',
+            'api-key': settings.BREVO_API_KEY,
+            'content-type': 'application/json',
+        },
+        method='POST',
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=settings.EMAIL_TIMEOUT) as response:
+            status_code = getattr(response, 'status', None) or response.getcode()
+            if status_code >= 400:
+                raise ValueError(f'Brevo API respondio con estado {status_code}.')
+    except HTTPError as exc:
+        detalle = exc.read().decode('utf-8', errors='ignore')
+        raise ValueError(f'Brevo API devolvio HTTP {exc.code}: {detalle or exc.reason}') from exc
+    except URLError as exc:
+        raise ValueError(f'No fue posible conectar con Brevo API: {exc.reason}') from exc
 
 
 def _preparar_hoja_excel(hoja, titulo, encabezados):
@@ -382,6 +448,19 @@ def generar_excel_reporte_estudiante(datos):
 
 
 def obtener_estado_correo():
+    if _usa_brevo_api():
+        if not settings.DEFAULT_FROM_EMAIL:
+            return {
+                'backend': 'brevo_api',
+                'configurado': False,
+                'mensaje': 'Falta DEFAULT_FROM_EMAIL para el envio por Brevo API.'
+            }
+        return {
+            'backend': 'brevo_api',
+            'configurado': True,
+            'mensaje': 'Configuracion lista para envio por Brevo API.'
+        }
+
     backend = getattr(settings, 'EMAIL_BACKEND', '')
     if backend == 'django.core.mail.backends.console.EmailBackend':
         return {
@@ -421,6 +500,8 @@ def obtener_estado_correo():
 
 
 def probar_conexion_correo():
+    if _usa_brevo_api():
+        return True
     connection = get_connection()
     try:
         opened = connection.open()
@@ -465,15 +546,26 @@ def enviar_reporte_estudiante_por_correo(datos, enviado_por=None):
     cuerpo_texto = render_to_string('academico/email/reporte_estudiante.txt', contexto)
     cuerpo_html = render_to_string('academico/email/reporte_estudiante.html', contexto)
 
-    correo = EmailMultiAlternatives(
-        asunto,
-        cuerpo_texto,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[destinatario]
-    )
-    correo.attach_alternative(cuerpo_html, 'text/html')
-    correo.attach(nombre_archivo, contenido, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    correo.send(fail_silently=False)
+    if _usa_brevo_api():
+        _enviar_correo_brevo_api(
+            asunto=asunto,
+            cuerpo_texto=cuerpo_texto,
+            cuerpo_html=cuerpo_html,
+            destinatario=destinatario,
+            nombre_destinatario=estudiante.acudiente,
+            nombre_archivo=nombre_archivo,
+            contenido=contenido,
+        )
+    else:
+        correo = EmailMultiAlternatives(
+            asunto,
+            cuerpo_texto,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[destinatario]
+        )
+        correo.attach_alternative(cuerpo_html, 'text/html')
+        correo.attach(nombre_archivo, contenido, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        correo.send(fail_silently=False)
     registrar_reporte(datos, 'ENVIADO', destinatario=destinatario, enviado_por=enviado_por, asunto=asunto)
     return destinatario
 
