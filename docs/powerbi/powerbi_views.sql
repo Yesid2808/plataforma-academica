@@ -138,11 +138,133 @@ SELECT
     al.fecha_generacion,
     al.fecha_generacion::date AS fecha_alerta,
     al.descripcion,
+    COALESCE(asi_det.detalle_inasistencias, '') AS detalle_inasistencias,
+    COALESCE(mat_det.detalle_materias_riesgo, '') AS detalle_materias_riesgo,
+    CASE
+        WHEN ta.nombre = 'Inasistencia acumulada' THEN
+            COALESCE(asi_det.detalle_inasistencias, al.descripcion)
+        WHEN ta.nombre = 'Riesgo integral academico' THEN
+            TRIM(
+                BOTH ' ' FROM
+                CONCAT(
+                    al.descripcion,
+                    CASE
+                        WHEN COALESCE(asi_det.detalle_inasistencias, '') <> '' THEN
+                            ' | Inasistencias: ' || asi_det.detalle_inasistencias
+                        ELSE ''
+                    END,
+                    CASE
+                        WHEN COALESCE(mat_det.detalle_materias_riesgo, '') <> '' THEN
+                            ' | Materias: ' || mat_det.detalle_materias_riesgo
+                        ELSE ''
+                    END
+                )
+            )
+        WHEN ta.nombre IN ('Bajo rendimiento academico', 'Riesgo por multiples materias') THEN
+            COALESCE(mat_det.detalle_materias_riesgo, al.descripcion)
+        ELSE al.descripcion
+    END AS descripcion_detallada,
     CASE WHEN al.estado = 'ACTIVA' THEN 1 ELSE 0 END AS alerta_activa,
     CASE WHEN al.nivel = 'CRITICO' AND al.estado = 'ACTIVA' THEN 1 ELSE 0 END AS alerta_critica_activa
 FROM public.alertas_alertatemprana al
 LEFT JOIN public.alertas_tipoalerta ta ON ta.id = al.tipo_alerta_id
-LEFT JOIN public.alertas_configuracionalerta ca ON ca.id = al.configuracion_id;
+LEFT JOIN public.alertas_configuracionalerta ca ON ca.id = al.configuracion_id
+LEFT JOIN (
+    SELECT
+        asi.estudiante_id,
+        STRING_AGG(
+            TO_CHAR(asi.fecha, 'DD/MM/YYYY') || ' - ' || a.nombre,
+            '; ' ORDER BY asi.fecha DESC, a.nombre
+        ) AS detalle_inasistencias
+    FROM public.asistencia_asistencia asi
+    JOIN public.academico_cargaacademica carga ON carga.id = asi.carga_academica_id
+    JOIN public.academico_asignatura a ON a.id = carga.asignatura_id
+    WHERE asi.estado = 'A'
+    GROUP BY asi.estudiante_id
+) asi_det ON asi_det.estudiante_id = al.estudiante_id
+LEFT JOIN (
+    SELECT
+        mp.estudiante_id,
+        STRING_AGG(
+            mp.asignatura || ' (' || mp.promedio_asignatura || ')',
+            ', ' ORDER BY mp.promedio_asignatura, mp.asignatura
+        ) AS detalle_materias_riesgo
+    FROM (
+        SELECT
+            cal.estudiante_id,
+            a.nombre AS asignatura,
+            ROUND(AVG(cal.nota)::numeric, 2) AS promedio_asignatura
+        FROM public.evaluacion_calificacion cal
+        JOIN public.evaluacion_actividadevaluativa act ON act.id = cal.actividad_id
+        JOIN public.academico_cargaacademica carga ON carga.id = act.carga_academica_id
+        JOIN public.academico_asignatura a ON a.id = carga.asignatura_id
+        GROUP BY cal.estudiante_id, a.nombre
+    ) mp
+    WHERE mp.promedio_asignatura < 3.0
+    GROUP BY mp.estudiante_id
+) mat_det ON mat_det.estudiante_id = al.estudiante_id;
+
+
+CREATE OR REPLACE VIEW public.powerbi_alerta_inasistencia_detalle AS
+SELECT
+    al.id AS alerta_id,
+    al.estudiante_id,
+    e.codigo,
+    CONCAT(e.apellidos, ' ', e.nombres) AS estudiante,
+    asi.id AS asistencia_id,
+    asi.fecha,
+    carga.id AS carga_academica_id,
+    a.nombre AS asignatura,
+    asi.estado,
+    CASE asi.estado
+        WHEN 'A' THEN 'Ausente'
+        WHEN 'T' THEN 'Tarde'
+        WHEN 'J' THEN 'Justificado'
+        WHEN 'P' THEN 'Presente'
+        ELSE 'Sin clasificar'
+    END AS estado_asistencia,
+    asi.observacion
+FROM public.alertas_alertatemprana al
+JOIN public.alertas_tipoalerta ta ON ta.id = al.tipo_alerta_id
+JOIN public.academico_estudiante e ON e.id = al.estudiante_id
+JOIN public.asistencia_asistencia asi ON asi.estudiante_id = al.estudiante_id
+JOIN public.academico_cargaacademica carga ON carga.id = asi.carga_academica_id
+JOIN public.academico_asignatura a ON a.id = carga.asignatura_id
+WHERE ta.nombre IN ('Inasistencia acumulada', 'Riesgo integral academico')
+  AND asi.estado = 'A';
+
+
+CREATE OR REPLACE VIEW public.powerbi_alerta_materias_detalle AS
+WITH materias_promedio AS (
+    SELECT
+        cal.estudiante_id,
+        a.id AS asignatura_id,
+        a.nombre AS asignatura,
+        ROUND(AVG(cal.nota)::numeric, 2) AS promedio_asignatura,
+        COUNT(*) AS total_calificaciones,
+        MAX(cal.fecha_registro)::date AS ultima_fecha_calificacion
+    FROM public.evaluacion_calificacion cal
+    JOIN public.evaluacion_actividadevaluativa act ON act.id = cal.actividad_id
+    JOIN public.academico_cargaacademica carga ON carga.id = act.carga_academica_id
+    JOIN public.academico_asignatura a ON a.id = carga.asignatura_id
+    GROUP BY cal.estudiante_id, a.id, a.nombre
+)
+SELECT
+    al.id AS alerta_id,
+    al.estudiante_id,
+    e.codigo,
+    CONCAT(e.apellidos, ' ', e.nombres) AS estudiante,
+    mp.asignatura_id,
+    mp.asignatura,
+    mp.promedio_asignatura,
+    mp.total_calificaciones,
+    mp.ultima_fecha_calificacion
+FROM public.alertas_alertatemprana al
+JOIN public.alertas_tipoalerta ta ON ta.id = al.tipo_alerta_id
+JOIN public.academico_estudiante e ON e.id = al.estudiante_id
+JOIN materias_promedio mp ON mp.estudiante_id = al.estudiante_id
+WHERE ta.nombre IN ('Bajo rendimiento academico', 'Riesgo integral academico', 'Riesgo por multiples materias')
+  AND mp.promedio_asignatura < 3.0;
 
 
 CREATE OR REPLACE VIEW public.powerbi_fact_seguimiento_alerta AS
