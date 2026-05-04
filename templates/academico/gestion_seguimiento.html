@@ -302,7 +302,7 @@
                                             {% endif %}
                                         </td>
                                         <td class="text-center">{{ alerta.fecha_generacion|date:"Y-m-d H:i" }}</td>
-                                        <td>{{ alerta.descripcion }}</td>
+                                        <td>{{ alerta.descripcion_visible|default:alerta.descripcion }}</td>
                                         <td class="text-center">
                                             <div class="d-flex justify-content-center gap-1 flex-wrap">
                                                 <a href="{% url 'detalle_alerta' alerta.id %}" class="btn btn-sm btn-info text-white" title="Ver seguimiento">

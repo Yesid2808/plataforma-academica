@@ -64,6 +64,7 @@ from .models import (
     ReporteAcudiente,
 )
 from alertas.models import AlertaTemprana
+from alertas.utils import construir_descripcion_actual_alerta
 
 
 CATALOGOS = {
@@ -1126,6 +1127,8 @@ def gestion_seguimiento(request):
 
         page_obj = Paginator(estudiantes.order_by('apellidos', 'nombres'), 10).get_page(request.GET.get('page'))
         alerta_page_obj = Paginator(alertas, 8).get_page(request.GET.get('alerta_page'))
+        for alerta in alerta_page_obj.object_list:
+            alerta.descripcion_visible = construir_descripcion_actual_alerta(alerta)
 
     query_params = request.GET.copy()
     query_params.pop('page', None)

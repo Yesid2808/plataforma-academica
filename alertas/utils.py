@@ -507,9 +507,10 @@ def construir_detalle_alerta(alerta):
 
     if tipo == INASISTENCIA_ACUMULADA:
         inasistencias = obtener_detalle_inasistencias(estudiante)
+        descripcion_actual = f'Se registran actualmente {len(inasistencias)} inasistencias acumuladas.'
         return {
             'titulo': 'Detalle de inasistencias acumuladas',
-            'descripcion_actual': f'Se registran actualmente {len(inasistencias)} inasistencias acumuladas.',
+            'descripcion_actual': descripcion_actual,
             'resumen': f'Se encontraron {len(inasistencias)} inasistencias asociadas a esta alerta.',
             'metricas': [
                 {'label': 'Total inasistencias', 'value': len(inasistencias)},
@@ -656,3 +657,7 @@ def construir_detalle_alerta(alerta):
         'metricas': [],
         'tabla': None,
     }
+
+
+def construir_descripcion_actual_alerta(alerta):
+    return construir_detalle_alerta(alerta).get('descripcion_actual', alerta.descripcion)

@@ -12,7 +12,7 @@ from academico.models import Grado, ReporteAcudiente
 from usuarios.permissions import filtrar_alertas_visibles, grupos_visibles_para
 from .forms import SeguimientoAlertaForm
 from .models import AlertaTemprana, TipoAlerta
-from .utils import construir_detalle_alerta
+from .utils import construir_descripcion_actual_alerta, construir_detalle_alerta
 
 
 def _alertas_filtradas(request):
@@ -170,7 +170,7 @@ def exportar_alertas_excel(request):
             _nivel_legible(alerta.nivel),
             alerta.get_estado_display(),
             alerta.fecha_generacion.strftime('%Y-%m-%d %H:%M'),
-            alerta.descripcion,
+            construir_descripcion_actual_alerta(alerta),
             ultimo_seguimiento.get_accion_display() if ultimo_seguimiento else '',
             ultimo_seguimiento.get_resultado_display() if ultimo_seguimiento else '',
             ultimo_seguimiento.proxima_revision.strftime('%Y-%m-%d') if ultimo_seguimiento and ultimo_seguimiento.proxima_revision else '',
