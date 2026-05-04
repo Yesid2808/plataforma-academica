@@ -67,7 +67,7 @@
 
                     <div class="mt-3">
                         <span class="text-muted d-block mb-1">Descripción</span>
-                        <p class="mb-0">{{ alerta.descripcion }}</p>
+                        <p class="mb-0">{{ detalle_alerta.descripcion_actual|default:alerta.descripcion }}</p>
                     </div>
 
                     <div class="mt-4">

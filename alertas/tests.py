@@ -147,3 +147,28 @@ class AlertasAcademicasTests(TestCase):
         self.assertContains(response, '2026-03-05')
         self.assertContains(response, 'Matematicas')
         self.assertContains(response, 'Ausencia registrada')
+
+    def test_detalle_alerta_riesgo_integral_muestra_descripcion_actualizada(self):
+        for offset in range(5):
+            Asistencia.objects.create(
+                estudiante=self.estudiante,
+                carga_academica=self.carga,
+                fecha=date(2026, 4, 14 + offset),
+                estado='A',
+            )
+
+        tipo_alerta = TipoAlerta.objects.create(nombre='Riesgo integral academico')
+        alerta = AlertaTemprana.objects.create(
+            estudiante=self.estudiante,
+            tipo_alerta=tipo_alerta,
+            nivel='CRITICO',
+            descripcion='Riesgo integral: promedio academico 4.26 y 0 inasistencias acumuladas.',
+            estado='ACTIVA',
+        )
+
+        self.client.force_login(self.docente)
+        response = self.client.get(f'/alertas/{alerta.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Promedio: sin calificaciones; ausencias: 5.')
+        self.assertNotContains(response, '0 inasistencias acumuladas.')

@@ -509,6 +509,7 @@ def construir_detalle_alerta(alerta):
         inasistencias = obtener_detalle_inasistencias(estudiante)
         return {
             'titulo': 'Detalle de inasistencias acumuladas',
+            'descripcion_actual': f'Se registran actualmente {len(inasistencias)} inasistencias acumuladas.',
             'resumen': f'Se encontraron {len(inasistencias)} inasistencias asociadas a esta alerta.',
             'metricas': [
                 {'label': 'Total inasistencias', 'value': len(inasistencias)},
@@ -531,8 +532,14 @@ def construir_detalle_alerta(alerta):
         promedio = obtener_promedio_academico(estudiante)
         materias = obtener_detalle_materias(estudiante)
         materias_riesgo = [item for item in materias if item['promedio'] < Decimal('3.00')]
+        descripcion_actual = (
+            f'El estudiante registra promedio academico acumulado de {promedio}.'
+            if promedio is not None else
+            'El estudiante no tiene calificaciones registradas actualmente.'
+        )
         return {
             'titulo': 'Detalle del bajo rendimiento academico',
+            'descripcion_actual': descripcion_actual,
             'resumen': 'Se muestra el promedio general y el comportamiento por asignatura del estudiante.',
             'metricas': [
                 {'label': 'Promedio general', 'value': promedio if promedio is not None else 'Sin notas'},
@@ -557,8 +564,20 @@ def construir_detalle_alerta(alerta):
         inasistencias = obtener_detalle_inasistencias(estudiante)
         materias = obtener_detalle_materias(estudiante)
         materias_riesgo = [item for item in materias if item['promedio'] < Decimal('3.00')]
+        if promedio is not None and promedio < Decimal('3.00') and len(inasistencias) >= 3:
+            descripcion_actual = (
+                f'Riesgo integral: promedio academico {promedio} y '
+                f'{len(inasistencias)} inasistencias acumuladas.'
+            )
+        else:
+            detalle_promedio = promedio if promedio is not None else 'sin calificaciones'
+            descripcion_actual = (
+                'El estudiante ya no cumple la condicion de riesgo integral. '
+                f'Promedio: {detalle_promedio}; ausencias: {len(inasistencias)}.'
+            )
         return {
             'titulo': 'Detalle del riesgo integral',
+            'descripcion_actual': descripcion_actual,
             'resumen': 'Esta alerta combina ausencias acumuladas con bajo rendimiento academico.',
             'metricas': [
                 {'label': 'Promedio general', 'value': promedio if promedio is not None else 'Sin notas'},
@@ -577,8 +596,16 @@ def construir_detalle_alerta(alerta):
     if tipo == CAIDA_RENDIMIENTO:
         caida = obtener_caida_reciente(estudiante)
         detalle = obtener_detalle_caida_reciente(estudiante)
+        descripcion_actual = (
+            (
+                f"El promedio reciente bajo de {caida['promedio_anterior']} a "
+                f"{caida['promedio_reciente']} (caida {caida['caida']})."
+            ) if caida else
+            'No hay suficientes calificaciones para evaluar la tendencia reciente.'
+        )
         return {
             'titulo': 'Detalle de la caida reciente de rendimiento',
+            'descripcion_actual': descripcion_actual,
             'resumen': 'Se comparan las ultimas calificaciones registradas para evidenciar el descenso.',
             'metricas': [
                 {'label': 'Promedio anterior', 'value': caida['promedio_anterior'] if caida else 'N/D'},
@@ -601,8 +628,14 @@ def construir_detalle_alerta(alerta):
 
     if tipo == RIESGO_MULTIMATERIA:
         materias = [item for item in obtener_detalle_materias(estudiante) if item['promedio'] < Decimal('3.00')]
+        if materias:
+            detalle = ', '.join(f"{item['nombre']} ({item['promedio']})" for item in materias[:4])
+            descripcion_actual = f'El estudiante presenta {len(materias)} asignaturas en riesgo: {detalle}.'
+        else:
+            descripcion_actual = 'El estudiante no presenta multiples asignaturas en riesgo actualmente.'
         return {
             'titulo': 'Detalle de asignaturas en riesgo',
+            'descripcion_actual': descripcion_actual,
             'resumen': 'Estas son las asignaturas que actualmente sostienen la alerta.',
             'metricas': [
                 {'label': 'Asignaturas comprometidas', 'value': len(materias)},
@@ -618,6 +651,7 @@ def construir_detalle_alerta(alerta):
 
     return {
         'titulo': 'Soporte del caso',
+        'descripcion_actual': alerta.descripcion,
         'resumen': 'Esta alerta aun no tiene un detalle estructurado adicional.',
         'metricas': [],
         'tabla': None,
